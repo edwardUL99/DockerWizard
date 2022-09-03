@@ -1,12 +1,11 @@
 """
 This module encapsulates the parsing of required arguments
 """
-import os
 from typing import List
 from abc import ABC, abstractmethod
 import argparse
 
-from .const import COMMAND_NAME
+from .const import DOCKER_WIZARD_CMD_NAME
 from .workdir import get_working_directory
 
 
@@ -16,7 +15,7 @@ class Argument:
     """
 
     @abstractmethod
-    def add_to_parser(self, parser: argparse.ArgumentParser):
+    def add_to_parser(self, parser):
         """
         Add the argument to the given parser in a means that makes sense to the implementing argument
         :param parser: tge parser to add the argument to
@@ -65,7 +64,7 @@ class FlagArgument(BaseArgument):
         super().__init__(name=name, description=description, action=action, required=required, default=default)
         self.long_name = long_name
 
-    def add_to_parser(self, parser: argparse.ArgumentParser):
+    def add_to_parser(self, parser):
         parser.add_argument(self.name, self.long_name, help=self.description, action=self.action,
                             required=self.required, default=self.default)
 
@@ -90,12 +89,26 @@ class PositionalArgument(BaseArgument):
         super().__init__(name=name, description=description, action=action, required=required, default=default)
         self.nargs = nargs
 
-    def add_to_parser(self, parser: argparse.ArgumentParser):
+    def add_to_parser(self, parser):
         parser.add_argument(self.name, help=self.description, action=self.action, default=self.default,
                             nargs=self.nargs)
 
 
-name = os.environ.get(COMMAND_NAME)
+class GroupedArgument(Argument):
+    """
+    A mutual exclusion argument group to group args that only one value should be provided
+    """
+    def __init__(self, args: List[Argument]):
+        self.args = args
+
+    def add_to_parser(self, parser):
+        group = parser.add_mutually_exclusive_group()
+
+        for arg in self.args:
+            arg.add_to_parser(group)
+
+
+name = DOCKER_WIZARD_CMD_NAME
 _parser = argparse.ArgumentParser(name, description='A tool to build Docker images with pre-build steps')
 ARGUMENTS: List[Argument] = [
     PositionalArgument(name='file', description='The build file specifying the resulting Docker image'),
@@ -109,6 +122,7 @@ ARGUMENTS: List[Argument] = [
                                                               'found in the project root directory',
                  default=None, required=False)
 ]
+
 
 _parsed = None
 
