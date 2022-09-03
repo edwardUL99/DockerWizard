@@ -1,0 +1,4 @@
+# If the file path is relative, it is read relative to the directory the custom-commands.yaml file is in
+commands:
+  - file: 'custom.py'
+    class: 'SampleCustomCommand'

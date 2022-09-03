@@ -1,0 +1,43 @@
+#!/usr/bin/env bash
+
+# The wrapper script to run the dockerwizard module
+
+ARGS="${@:1}"
+export DOCKER_WIZARD_CMD_NAME="docker-wizard"
+
+function error() {
+  echo -e "[\u001b[31mERROR\u001b[0m] $1"
+}
+
+function verify_home() {
+  required_files=('main.py')
+  required_directories=('bin' 'dockerwizard')
+
+  for file in "${required_files[@]}"; do
+    if [ ! -f "$DOCKER_WIZARD_HOME/$file" ]; then
+      error "Malformed DOCKER_WIZARD_HOME $DOCKER_WIZARD_HOME. Make sure it points to the root of the project"
+      exit 3
+    fi
+  done
+
+  for directory in "${required_directories[@]}"; do
+    if [ ! -d "$DOCKER_WIZARD_HOME/$directory" ]; then
+      error "Malformed DOCKER_WIZARD_HOME $DOCKER_WIZARD_HOME. Make sure it points to the root of the project"
+      exit 3
+    fi
+  done
+}
+
+if [ -z "$DOCKER_WIZARD_HOME" ]; then
+    error "To run docker-wizard you need to set DOCKER_WIZARD_HOME to the root of the installed project"
+    exit 1
+elif [ ! -d "$DOCKER_WIZARD_HOME" ]; then
+    error "DOCKER_WIZARD_HOME $DOCKER_WIZARD_HOME is not a directory"
+    exit 2
+fi
+
+SCRIPT="$DOCKER_WIZARD_HOME/main.py"
+
+verify_home
+
+python "$SCRIPT" $ARGS
