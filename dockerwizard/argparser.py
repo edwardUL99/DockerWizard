@@ -81,7 +81,6 @@ class PositionalArgument(BaseArgument):
         """
         Create a flag argument
         :param name: the short flag name prefixed with -
-        :param long_name: the long_name prefixed with --
         :param description: help description
         :param action: an action to perform with the arg, e.g, argparse store_true
         :param required: true if required (only valid if name and long_name is provided)
