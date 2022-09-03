@@ -191,7 +191,7 @@ class BuildStep(BaseFileObject):
         super().__init__()
         self.name = None
         self.command: str = ''
-        self.arguments: List[str] = []
+        self.arguments: list = []
 
     def do_initialise(self, data: BuildFileData):
         setters = [
