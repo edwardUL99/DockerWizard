@@ -101,3 +101,5 @@ def main():
 
     if not builder_obj.build():
         exit(1)
+    else:
+        change_back()

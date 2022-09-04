@@ -95,7 +95,7 @@ class Builder:
 
         for i, val in enumerate(self.config.steps):
             self._execute_step(i + 1, val)
-            change_directory(self._working_directory.name)
+            change_directory(self._working_directory.name, not_store=True)
 
     def _build_docker_image(self):
         """
@@ -115,6 +115,12 @@ class Builder:
 
             for line in split:
                 info(f'\t{line}')
+
+    def _clean_workdir(self):
+        try:
+            self._working_directory.cleanup()
+        except:
+            pass
 
     def build(self):
         """
@@ -140,5 +146,6 @@ class Builder:
             failed = True
 
         change_back()
+        self._clean_workdir()
 
         return not failed

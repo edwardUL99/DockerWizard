@@ -16,7 +16,7 @@ for %%s in ("main.py" "bin" "dockerwizard") do (
 
 python "%SCRIPT%" %ARGS%
 
-exit /b 0
+exit /b %ERRORLEVEL%
 
 :MALFORMED_WIZARD_HOME
 call :Error "Malformed DOCKER_WIZARD_HOME %DOCKER_WIZARD_HOME%. Make sure it points to the root of the project"
