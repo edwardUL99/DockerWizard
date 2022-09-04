@@ -104,12 +104,13 @@ class PropertySetter:
         if self.required and not value:
             self._error(f'{self.name} not found')
         else:
-            validate_error = self.validate(value) if self.validate is not None else None
+            if value:
+                validate_error = self.validate(value) if self.validate is not None else None
 
-            if validate_error is not None:
-                self._error(validate_error)
-            else:
-                target.set_property(self.name, value)
+                if validate_error is not None:
+                    self._error(validate_error)
+                else:
+                    target.set_property(self.name, value)
 
 
 def throw_property_error(e: str):
@@ -197,7 +198,7 @@ class BuildStep(BaseFileObject):
         setters = [
             PropertySetter('name', on_error=throw_property_error),
             PropertySetter('command', required=True, on_error=throw_property_error),
-            PropertySetter('arguments', required=True, on_error=throw_property_error)
+            PropertySetter('arguments', on_error=throw_property_error)
         ]
 
         data.set_properties(setters, self)

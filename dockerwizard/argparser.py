@@ -5,8 +5,21 @@ from typing import List
 from abc import ABC, abstractmethod
 import argparse
 
-from .const import DOCKER_WIZARD_CMD_NAME
+from .const import DOCKER_WIZARD_CMD_NAME, VERSION
 from .workdir import get_working_directory
+from .cli import info
+
+
+class _VersionAction(argparse.Action):
+    """
+    An action that checks for a -v string and prints the version and exits if so
+    """
+    def __init__(self, option_strings, dest, **kwargs):
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        info(f'{DOCKER_WIZARD_CMD_NAME} version {VERSION}')
+        parser.exit()
 
 
 class Argument:
@@ -120,7 +133,9 @@ ARGUMENTS: List[Argument] = [
     FlagArgument(name='-c', long_name='--custom', description='A path to a custom commands YAML definition file. '
                                                               'Overrides default custom-commands.yaml file '
                                                               'found in the project root directory',
-                 default=None, required=False)
+                 default=None, required=False),
+    FlagArgument(name='-v', long_name='--version', description='Print the version of the tool and immediately exit',
+                 required=False, action=_VersionAction)
 ]
 
 

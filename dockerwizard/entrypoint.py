@@ -3,7 +3,7 @@ The main entrypoint into the module
 """
 import os
 
-from .const import DOCKER_WIZARD_HOME, CUSTOM_COMMANDS, DOCKER_WIZARD_HOME_VAR, DOCKER_WIZARD_CMD_NAME, VERSION
+from .const import DOCKER_WIZARD_HOME, CUSTOM_COMMANDS, DOCKER_WIZARD_HOME_VAR
 from .workdir import get_working_directory, change_directory, change_back
 from . import cli
 from .argparser import parse
@@ -84,7 +84,6 @@ def main():
     The main entrypoint
     :return: None
     """
-    print(f'{DOCKER_WIZARD_CMD_NAME} version {VERSION}')
     initialise_system()
 
     # change directory as custom commands and other system initialisations are done relative to docker builder home
