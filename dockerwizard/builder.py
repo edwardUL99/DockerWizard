@@ -116,10 +116,13 @@ class Builder:
             for line in split:
                 info(f'\t{line}')
 
-    def _clean_workdir(self):
+    def _clean_build_directory(self):
+        """
+        Attempts to clean up the build directory, silently ignoring errors. Other errors are thrown
+        """
         try:
             self._working_directory.cleanup()
-        except:
+        except OSError:
             pass
 
     def build(self):
@@ -146,6 +149,6 @@ class Builder:
             failed = True
 
         change_back()
-        self._clean_workdir()
+        self._clean_build_directory()
 
         return not failed

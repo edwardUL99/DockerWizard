@@ -184,7 +184,10 @@ from sys import path
 from os import environ
 
 # add the project home to build so imports will work
-path.append(environ.get('DOCKER_WIZARD_HOME'))
+project_home = environ.get('DOCKER_WIZARD_HOME')
+
+if project_home not in path:
+    path.append(project_home)
 
 # custom commands should extend this abstract command
 from dockerwizard.commands import AbstractCommand
@@ -210,9 +213,12 @@ class SampleCustomCommand(AbstractCommand):
         for arg in args:
             cli.info(f'\t{arg}')
 
-        if args.index('throw-error'):
-            # demo purposes if args contain throw-error, raise a CommandError
-            raise CommandError('This is how you raise an error condition from the command')
+        try:
+            if args.index("throw-error"):
+                # demo purposes if args contain throw-error, raise a CommandError
+                raise CommandError('This is how you raise an error condition from the command')
+        except ValueError:
+            pass  # not in the list so ignore
 
     def default_name(self):
         # allows a default name to be assigned when the name tag is not provided in the build step
