@@ -42,8 +42,16 @@ pip install -r requirements.txt
 ```bash
 python setup.py install
 ```
-This step enables you to import the `dockerbuilder` framework package (which contains modules for the project) without
+This step enables you to import the `dockerwizard` framework package (which contains modules for the project) without
 adding `DOCKER_WIZARD_HOME` to the system path when defining commands
+
+A useful sanity check to ensure that the system will work from an installation point of view is to run the following
+(replace `<DOCKER_WIZARD_HOME>` with `$DOCKER_WIZARD_HOME` on bash or `%DOCKER_WIZARD_HOME%` on Windows:
+```bash
+<DOCKER_WIZARD_HOME>/bin/docker-wizard -v
+```
+And verify that the output has no error messages (for example, there may be a Docker version error if Docker is
+not installed)
 
 ## Run
 To run the tool, you have the following usage:

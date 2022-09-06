@@ -5,21 +5,9 @@ from typing import List
 from abc import ABC, abstractmethod
 import argparse
 
-from .const import DOCKER_WIZARD_CMD_NAME, VERSION
+from .const import DOCKER_WIZARD_CMD_NAME
 from .workdir import get_working_directory
-from .cli import info
-
-
-class _VersionAction(argparse.Action):
-    """
-    An action that checks for a -v string and prints the version and exits if so
-    """
-    def __init__(self, option_strings, dest, **kwargs):
-        super().__init__(option_strings, dest, nargs=0, **kwargs)
-
-    def __call__(self, parser, namespace, values, option_string=None):
-        info(f'{DOCKER_WIZARD_CMD_NAME} version {VERSION}')
-        parser.exit()
+from .versioning import VersionAction
 
 
 class Argument:
@@ -135,7 +123,7 @@ ARGUMENTS: List[Argument] = [
                                                               'found in the project root directory',
                  default=None, required=False),
     FlagArgument(name='-v', long_name='--version', description='Print the version of the tool and immediately exit',
-                 required=False, action=_VersionAction)
+                 required=False, action=VersionAction)
 ]
 
 
