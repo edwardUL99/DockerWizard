@@ -83,7 +83,7 @@ class Builder:
                 raise BuildConfigurationError(f'Unknown command {command} in configuration build step'
                                               f' {index}')
         except CommandError as e:
-            error(f'Failed to execute build step {index} - {step.name} with error {e.message}')
+            error(f'Failed to execute build step {index} - {step.name} with error: {e.message}')
             raise BuildFailedError()
 
     def _execute_steps(self):

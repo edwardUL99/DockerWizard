@@ -28,6 +28,15 @@ custom commands.
 - python 3.8 minimum installed with the command `python` for that version available on the PATH
 - pip for the python version installed
 - docker installed
+- If you are running the tool on Windows and wish to specify bash commands in the `execute-shell` command, you need a Bash emulator installed. If you have
+Windows Subsystem for Linux (WSL) setup, you don't need to do anything since the `bash` command is available as part of
+WSL. Otherwise, you need to set an environment variable called `DOCKER_WIZARD_BASH_PATH` which contains the path to your
+Bash emulator executable, for example, if you have `Git Bash` installed, you can run:
+```
+set DOCKER_WIZARD_BASH_PATH='"C:\Program Files\Git\bin\bash.exe"'
+```
+**Note:** It is recommended to create separate build files for Unix environments and Windows environments for best
+compatibility as the stability of the build cannot be guaranteed
 
 ## Installation
 To install the project, perform the following steps:
@@ -113,7 +122,7 @@ build:
     - name: 'Generate message.txt using set-message.sh'
       command: 'execute-shell'
       arguments:
-        - 'bash'
+        - 'bash' # if Windows, the framework will try to resolve bash to a bash emulator either through WSL or set with DOCKER_WIZARD_BASH_PATH env variable
         - 'set-message.sh'
     - name: 'View contents of build directory after build'
       command: 'execute-shell'
@@ -137,6 +146,7 @@ list of arguments to the command. The list of built-in commands are as follows:
     - 2: Destination
 - **execute-shell**: Executes a system command using the system shell (bash or cmd, e.g.)
   - *Arguments*: 1 or more arguments which are joined together and passed to the shell
+  - If the first argument is `bash` and the OS is windows, it will be resolved to a Bash emulator, see requirements.
 - **set-variable**: Sets an environment variable with provided value, logging it to the console
   - *Arguments*: 2 arguments
     - 1: Name of the variable
