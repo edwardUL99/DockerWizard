@@ -25,7 +25,7 @@ def isWindows() -> bool:
     Returns true if the OS is windows
     :return: true if OS is windows
     """
-    return _system == OSTypes.WINDOWS
+    return _system == OSTypes.WINDOWS.value
 
 
 def isLinux() -> bool:
@@ -33,7 +33,7 @@ def isLinux() -> bool:
     Returns true if the OS is linux
     :return: true if OS is linux
     """
-    return _system == OSTypes.LINUX
+    return _system == OSTypes.LINUX.value
 
 
 def isMac() -> bool:
@@ -41,7 +41,7 @@ def isMac() -> bool:
     Returns true if the OS is mac
     :return: true if OS is mac
     """
-    return _system == OSTypes.WINDOWS
+    return _system == OSTypes.MAC.value
 
 
 class SystemInitialisation:

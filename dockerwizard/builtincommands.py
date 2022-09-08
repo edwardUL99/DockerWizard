@@ -7,6 +7,8 @@ from .commands import AbstractCommand
 from .errors import CommandError
 from .process import Execution
 from .cli import info, warn
+from .system import isWindows
+from .const import DOCKER_WIZARD_BASH_PATH
 
 
 class CopyCommand(AbstractCommand):
@@ -40,12 +42,37 @@ class ExecuteSystemCommand(AbstractCommand):
     """
     def __init__(self):
         super().__init__('execute-shell', 1, at_least=True)
+        self._windows = isWindows()
+
+    def _resolve_bash(self, args: list):
+        """
+        If args[0] is bash and the OS is Windows, this method resolves it to Git Bash
+        :return: true if it had to be resolved
+        """
+        first_arg = args[0]
+        bash = 'bash'
+
+        if first_arg == bash and self._windows:
+            warn('Build is running on a Windows machine and the bash command is used in the execute-shell command. '
+                 'Attempting to use bash emulator')
+            warn('However, this should be avoided by using a Windows specific build file as the stability of the '
+                 'build is not guaranteed')
+            args[0] = DOCKER_WIZARD_BASH_PATH if DOCKER_WIZARD_BASH_PATH else bash
+
+            return True
+
+        return False
 
     def _execute(self, args: list):
         if len(args) < 1:
             raise CommandError('The execute-shell command needs at least one argument')
         else:
+            bash_resolved = self._resolve_bash(args)
             execution = Execution(args).execute()
+
+            if bash_resolved and self._windows:
+                # restore color after executing bash as it can reset the colors
+                os.system('color')
 
             if not execution.is_healthy():
                 raise CommandError(f'System command failed without stderr: {execution.stderr} and exit code:'

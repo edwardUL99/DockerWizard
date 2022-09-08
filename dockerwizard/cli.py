@@ -16,7 +16,7 @@ _YELLOW = '\u001b[33m'
 _RESET = '\u001b[0m'
 
 _INFO = 'INFO'
-_WARN = 'WARN'
+_WARN = 'WARNING'
 _ERROR = 'ERROR'
 
 
