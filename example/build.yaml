@@ -7,6 +7,7 @@ build:
     path: 'Dockerfile'
   # specifies a path to where files should be retrieved from when relative to file library
   library: 'files'
+  custom_commands: 'custom-commands.yaml'
   # list of file objects to copy to build directory
   files:
     - path: 'hello-world.py'

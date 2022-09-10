@@ -9,7 +9,7 @@ from . import cli
 from .argparser import parse
 from .builder import Builder
 from .buildparser import get_build_parser
-from .customcommands import load_custom
+from .customcommands import load_custom, custom_command_path_validator
 from .system import initialise_system, docker_wizard_home
 
 
@@ -69,13 +69,14 @@ def _load_custom_commands(custom_command_path: str):
     provided = custom_command_path is not None
     custom_command_path = custom_command_path if provided else \
         os.path.join(DOCKER_WIZARD_HOME, CUSTOM_COMMANDS)
+    validation_error = custom_command_path_validator(custom_command_path)
 
-    if os.path.isfile(custom_command_path):
+    if not validation_error:
         change_directory(os.path.dirname(custom_command_path))
         load_custom(os.path.basename(custom_command_path))
         change_back()
     elif provided:
-        cli.error(f'Custom Commands File {custom_command_path} does not exist')
+        cli.error(validation_error)
         exit(1)
 
 

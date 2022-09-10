@@ -8,6 +8,7 @@ from .models import DockerBuild, File, BuildStep
 from .workdir import create_temp_directory, change_directory, change_back
 from .cli import info, error
 from .commands import registry
+from .customcommands import change_and_load_custom
 from .builtincommands import register_builtins
 from .errors import CommandError, BuildFailedError, BuildConfigurationError
 from .process import Execution
@@ -125,6 +126,14 @@ class Builder:
         except OSError:
             pass
 
+    def _setup_custom_commands(self):
+        """
+        If the build specifies its own custom commands the, they are added to the existing ones
+        """
+        if self.config.custom_commands:
+            info(f'Build specified custom commands file {self.config.custom_commands}. Loading commands into build')
+            change_and_load_custom(self.config.custom_commands)
+
     def build(self):
         """
         Builds the docker image identified by the provided config
@@ -134,6 +143,7 @@ class Builder:
 
         try:
             self._copy_files()
+            self._setup_custom_commands()
 
             info('Changing working directory to build directory')
             change_directory(self._working_directory.name)

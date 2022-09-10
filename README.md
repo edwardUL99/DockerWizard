@@ -77,9 +77,9 @@ build specification file
 
 ## Build Specification
 A build is specified in a build file using YAML. The following file is a sample build file in the
-`example/hello-world-build` directory:
+`example/` directory:
 
-[build.yaml](example/hello-world-build/build.yaml)
+[build.yaml](example/build.yaml)
 ```yaml
 # A build object is identified by the build tag
 build:
@@ -133,7 +133,7 @@ build:
 ```
 This example is designed to run on Unix machines. To run it, run the following command from root of project:
 
-`docker-wizard -w example/hello-world-build build.yaml`
+`docker-wizard -w example build.yaml`
 
 ## Commands
 Build steps are executed by specifying an optional name to display on the build output, a command to run the step and a
@@ -185,10 +185,10 @@ commands:
 ```
 You can also define the file somewhere else and pass the path in with the **-c** flag
 
-The following is a sample custom-commands.yaml file and a sample python file (both contained in `example/custom-commands`)
+The following is a sample custom-commands.yaml file and a sample python file (both contained in `example`)
 containing the definitions of a sample command:
 
-[custom-commands.yaml](example/custom-commands/custom-commands.yaml)
+[custom-commands.yaml](example/custom-commands.yaml)
 ```yaml
 # If the file path is relative, it is read relative to the directory the custom-commands.yaml file is in
 commands:
@@ -196,7 +196,7 @@ commands:
     class: 'SampleCustomCommand'
 ```
 
-[custom.py](example/custom-commands/custom.py)
+[custom.py](example/custom.py)
 ```python
 from sys import path
 from os import environ

@@ -4,7 +4,7 @@ Constants for the project
 import os
 
 # the version of the tool
-VERSION = '1.0.0a5 (alpha)'
+VERSION = '1.0.0a6 (alpha)'
 
 # name of environment variable for docker wizard home
 DOCKER_WIZARD_HOME_VAR = 'DOCKER_WIZARD_HOME'
@@ -16,8 +16,7 @@ DOCKER_WIZARD_HOME = os.environ.get(DOCKER_WIZARD_HOME_VAR)
 DOCKER_WIZARD_CMD_NAME_VAR = 'DOCKER_WIZARD_CMD_NAME'
 
 # the name of the command to run the tool
-DOCKER_WIZARD_CMD_NAME = os.environ.get(DOCKER_WIZARD_CMD_NAME_VAR)
-DOCKER_WIZARD_CMD_NAME = DOCKER_WIZARD_CMD_NAME if DOCKER_WIZARD_CMD_NAME else 'DockerWizard'
+DOCKER_WIZARD_CMD_NAME = os.environ.get(DOCKER_WIZARD_CMD_NAME_VAR, 'docker-wizard')
 
 # On windows, a path to a bash emulator can be setup, e.g. git bash, if WSL bash isn't available
 DOCKER_WIZARD_BASH_PATH = os.environ.get('DOCKER_WIZARD_BASH_PATH')

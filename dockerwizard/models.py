@@ -1,14 +1,13 @@
 """
 This file exports models that are used throughout the dockerwizard module
 """
+import os.path
 from abc import ABC, abstractmethod
 from typing import Callable, List
 
 from .errors import BuildConfigurationError
 from .workdir import get_working_directory
-
-
-NESTED_FILE_OBJECTS: dict = {}
+from .customcommands import custom_command_path_validator
 
 
 class BuildFileData:
@@ -43,9 +42,6 @@ class BuildFileObject(ABC):
         :param tag_name: the name of the tag if a nested object
         """
         self.tag_name = tag_name
-
-        if self.tag_name is not None:
-            NESTED_FILE_OBJECTS[self.tag_name] = self
 
     @abstractmethod
     def initialise(self, data: BuildFileData):
@@ -229,9 +225,15 @@ class DockerBuild(BaseFileObject):
         super().__init__('build')
         self.image: str = ''
         self.dockerfile: File = File()
-        self.library: str = get_working_directory()
+        self.library: str = ''
+        self.custom_commands: str = ''
         self.files: List[File] = []
         self.steps: List[BuildStep] = []
+
+    def _convert_custom_commands(self):
+        if self.custom_commands:
+            if not os.path.isabs(self.custom_commands):
+                self.custom_commands = os.path.join(get_working_directory(), self.custom_commands)
 
     def do_initialise(self, data: BuildFileData):
         import os
@@ -240,13 +242,11 @@ class DockerBuild(BaseFileObject):
             if not os.path.isdir(path):
                 return f'{path} is not a directory'
 
-        def validate_dockerfile(path: str):
-            if not os.path.isfile(path):
-                return f'Dockerfile {path} does not exist'
-
         setters = [
             PropertySetter('image', required=True, on_error=throw_property_error),
-            PropertySetter('library', required=False, validate=validate_file_library, on_error=throw_property_error)
+            PropertySetter('library', required=False, validate=validate_file_library, on_error=throw_property_error),
+            PropertySetter('custom_commands', required=False, validate=custom_command_path_validator,
+                           on_error=throw_property_error)
         ]
 
         data.set_properties(setters, self)
@@ -255,6 +255,8 @@ class DockerBuild(BaseFileObject):
             raise BuildConfigurationError(f'dockerfile is a required property')
 
         self.dockerfile.initialise(data.get_property('dockerfile'))
+
+        self._convert_custom_commands()
 
         files_data = BuildFileData({
             'files': data.get_property('files')
