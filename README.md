@@ -75,6 +75,23 @@ retrieved from `DOCKER_WIZARD_HOME`
 - **file**: The path relative to the working directory either from where the command is run or specified by `-w` to the
 build specification file
 
+## Tests
+The project has a set of automated unit tests which can be run using the following command (on Windows use the cmd file)
+from the root of the project:
+```bash
+dockerwizard/tests/test
+```
+If you see output like:
+```bash
+...............................
+.........................
+Ran X tests in x.xxxs
+
+OK
+```
+it means that the tests have passed successfully with no errors. If there are any failures, it indicates that there may
+be a bug (due to coding error, python/library version inconsistencies or a breaking change)
+
 ## Build Specification
 A build is specified in a build file using YAML. The following file is a sample build file in the
 `example/` directory:
