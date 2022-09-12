@@ -2,8 +2,9 @@
 The main entrypoint into the module
 """
 import os
+import sys
 
-from .const import DOCKER_WIZARD_HOME, CUSTOM_COMMANDS, DOCKER_WIZARD_HOME_VAR
+from .const import CUSTOM_COMMANDS, DOCKER_WIZARD_HOME_VAR
 from .workdir import get_working_directory, change_directory, change_back
 from . import cli
 from .argparser import parse
@@ -23,7 +24,7 @@ def _validate_file(file):
 
     if not os.path.isfile(path):
         cli.error(f'Build file {file} does not exist')
-        exit(1)
+        sys.exit(1)
     else:
         return path
 
@@ -39,7 +40,7 @@ def _change_working_dir(working_dir):
     if abspath != get_working_directory():
         if not os.path.isdir(abspath):
             cli.error(f'{working_dir} does not exist')
-            exit(2)
+            sys.exit(2)
 
         cli.info(f'Changing directory to {abspath}')
         change_directory(abspath)
@@ -68,7 +69,7 @@ def _load_custom_commands(custom_command_path: str):
     """
     provided = custom_command_path is not None
     custom_command_path = custom_command_path if provided else \
-        os.path.join(DOCKER_WIZARD_HOME, CUSTOM_COMMANDS)
+        os.path.join(docker_wizard_home(), CUSTOM_COMMANDS)
     validation_error = custom_command_path_validator(custom_command_path)
 
     if not validation_error:
@@ -77,7 +78,7 @@ def _load_custom_commands(custom_command_path: str):
         change_back()
     elif provided:
         cli.error(validation_error)
-        exit(1)
+        sys.exit(1)
 
 
 def main():
@@ -101,6 +102,6 @@ def main():
     builder_obj = Builder(parsed)
 
     if not builder_obj.build():
-        exit(1)
+        sys.exit(1)
     else:
         change_back()

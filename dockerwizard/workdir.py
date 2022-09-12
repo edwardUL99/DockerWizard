@@ -5,8 +5,6 @@ import os
 from collections import deque
 import tempfile
 
-from .cli import warn
-
 
 # the previous working directories
 _previous_directories = deque()
@@ -51,4 +49,3 @@ def create_temp_directory():
     :return: the tempfile.TemporaryDirectory object
     """
     return tempfile.TemporaryDirectory()
-

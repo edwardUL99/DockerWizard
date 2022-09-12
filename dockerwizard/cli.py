@@ -5,6 +5,7 @@ import os
 import sys
 
 from .system import register_system_initialisation, SystemInitialisation, OSTypes
+from .const import DOCKER_WIZARD_TESTING_NAME
 
 register_system_initialisation(SystemInitialisation(OSTypes.WINDOWS, lambda: os.system('color')))
 
@@ -19,6 +20,12 @@ _INFO = 'INFO'
 _WARN = 'WARNING'
 _ERROR = 'ERROR'
 
+_DISABLED = False
+
+
+def _disabled():
+    return _DISABLED or os.environ.get(DOCKER_WIZARD_TESTING_NAME) == 'True'
+
 
 def _create_message(color: str, message: str, level: str) -> str:
     """
@@ -31,13 +38,24 @@ def _create_message(color: str, message: str, level: str) -> str:
     return f'[{color}{level}{_RESET}] {message}'
 
 
+def _print(msg: str, use_stderr: bool = False):
+    """
+    Print the message if cli is not disabled
+    """
+    if not _disabled():
+        if not use_stderr:
+            print(msg)
+        else:
+            print(msg, file=sys.stderr)
+
+
 def info(message: str):
     """
     Print an info message
     :param message: the info message to print
     :return: None
     """
-    print(_create_message(_GREEN, message, _INFO))
+    _print(_create_message(_GREEN, message, _INFO))
 
 
 def warn(message: str):
@@ -46,7 +64,7 @@ def warn(message: str):
     :param message: the warning message
     :return: None
     """
-    print(_create_message(_YELLOW, message, _WARN))
+    _print(_create_message(_YELLOW, message, _WARN))
 
 
 def error(message: str):
@@ -55,4 +73,20 @@ def error(message: str):
     :param message: the error message
     :return: None
     """
-    print(_create_message(_RED, message, _ERROR), file=sys.stderr)
+    _print(_create_message(_RED, message, _ERROR), True)
+
+
+def disable():
+    """
+    Disable output from the cli module
+    """
+    global _DISABLED
+    _DISABLED = True
+
+
+def enable():
+    """
+    Enable output from the cli module
+    """
+    global _DISABLED
+    _DISABLED = False

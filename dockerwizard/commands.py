@@ -85,17 +85,38 @@ class AbstractCommand(Command, ABC):
         self._max = max_num
         registry.register(name, self)
 
-    def _validate_num_args(self, args: list):
-        if self._at_least:
-            def predicate(x):
-                length = len(x)
-                return length < self._num_args_required and (self._max == -1 or length <= self._max)
-        else:
-            def predicate(x):
-                return len(x) != self._num_args_required
+    def _at_least_max_predicate(self, args: list):
+        """
+        Predicate for arguments of at least X values
+        """
+        length = len(args)
+        max_args = self._max != -1
+        max_message = f' and maximum {self._max} arguments' if max_args else ''
+        message = f'The {self.name} command requires at least {self._num_args_required} arguments{max_message}'
 
-        if predicate(args):
-            raise CommandError(f'The {self.name} command requires {self._num_args_required} arguments')
+        return length < self._num_args_required or (max_args and length > self._max), message
+
+    def _at_least_predicate(self, args: list):
+        """
+        A predicate for arguments with at least X values but max Y
+        """
+        message = f'The {self.name} command requires {self._num_args_required} arguments'
+
+        return len(args) < self._num_args_required, message
+
+    def _validate_num_args(self, args: list):
+        """
+        Validate the number of arguments passed in
+        """
+        if self._at_least:
+            predicate = self._at_least_max_predicate
+        else:
+            predicate = self._at_least_predicate
+
+        error, msg = predicate(args)
+
+        if error:
+            raise CommandError(msg)
 
     def execute(self, args: list):
         """
@@ -109,7 +130,7 @@ class AbstractCommand(Command, ABC):
             self._execute(args)
         except Exception as e:
             if not isinstance(e, CommandError):
-                raise CommandError(f'An unknown error was thrown executing step: {e}')
+                raise CommandError(f'An unknown error was thrown executing command: {e}')
             else:
                 raise e
 

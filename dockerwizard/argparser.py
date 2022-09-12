@@ -10,6 +10,13 @@ from .workdir import get_working_directory
 from .versioning import VersionAction
 
 
+def _get_work_dir():
+    """
+    Utility method to get current working directory, allows for easy testing
+    """
+    return get_working_directory()
+
+
 class Argument:
     """
     The argument interface. Each implementation determines the arguments it requires
@@ -36,7 +43,7 @@ class BaseArgument(Argument, ABC):
         :param description: help description
         :param action: an action to perform with the arg, e.g, argparse store_true
         :param required: true if required (only valid if name and long_name is provided)
-        :param default: a default value
+        :param default: a default value (if callable, it will be called for a return value as default)
         """
         self.name = name
         self.description = description
@@ -60,14 +67,15 @@ class FlagArgument(BaseArgument):
         :param description: help description
         :param action: an action to perform with the arg, e.g, argparse store_true
         :param required: true if required (only valid if name and long_name is provided)
-        :param default: a default value
+        :param default: a default value (if callable, it will be called for a return value as default)
         """
         super().__init__(name=name, description=description, action=action, required=required, default=default)
         self.long_name = long_name
 
     def add_to_parser(self, parser):
+        default = self.default() if callable(self.default) else self.default
         parser.add_argument(self.name, self.long_name, help=self.description, action=self.action,
-                            required=self.required, default=self.default)
+                            required=self.required, default=default)
 
 
 class PositionalArgument(BaseArgument):
@@ -84,40 +92,31 @@ class PositionalArgument(BaseArgument):
         :param description: help description
         :param action: an action to perform with the arg, e.g, argparse store_true
         :param required: true if required (only valid if name and long_name is provided)
-        :param default: a default value
+        :param default: a default value (if callable, it will be called for a return value as default)
         :param nargs: number of args
         """
         super().__init__(name=name, description=description, action=action, required=required, default=default)
         self.nargs = nargs
 
     def add_to_parser(self, parser):
-        parser.add_argument(self.name, help=self.description, action=self.action, default=self.default,
+        default = self.default() if callable(self.default) else self.default
+        parser.add_argument(self.name, help=self.description, action=self.action, default=default,
                             nargs=self.nargs)
 
 
-class GroupedArgument(Argument):
-    """
-    A mutual exclusion argument group to group args that only one value should be provided
-    """
-    def __init__(self, args: List[Argument]):
-        self.args = args
+def _get_parser() -> argparse.ArgumentParser:
+    name = DOCKER_WIZARD_CMD_NAME
 
-    def add_to_parser(self, parser):
-        group = parser.add_mutually_exclusive_group()
-
-        for arg in self.args:
-            arg.add_to_parser(group)
+    return argparse.ArgumentParser(name, description='A tool to build Docker images with pre-build steps')
 
 
-name = DOCKER_WIZARD_CMD_NAME
-_parser = argparse.ArgumentParser(name, description='A tool to build Docker images with pre-build steps')
 ARGUMENTS: List[Argument] = [
     PositionalArgument(name='file', description='The build file specifying the resulting Docker image'),
     FlagArgument(name='-w', long_name='--workdir', description='The working directory to run the tool from '
                                                                '(different to the build directory). The '
                                                                'build file will be sourced relative to this if '
                                                                'a relative path',
-                 default=get_working_directory(), required=False),
+                 default=_get_work_dir, required=False),
     FlagArgument(name='-c', long_name='--custom', description='A path to a custom commands YAML definition file. '
                                                               'Overrides default custom-commands.yaml file '
                                                               'found in the project root directory',
@@ -127,20 +126,14 @@ ARGUMENTS: List[Argument] = [
 ]
 
 
-_parsed = None
-
-
 def parse() -> argparse.Namespace:
     """
     Parse the defined arguments and return them in a namespace
     :return: the parsed arguments
     """
-    global _parsed
+    parser = _get_parser()
 
-    if not _parsed:
-        for arg in ARGUMENTS:
-            arg.add_to_parser(_parser)
+    for arg in ARGUMENTS:
+        arg.add_to_parser(parser)
 
-        _parsed = _parser.parse_args()
-
-    return _parsed
+    return parser.parse_args()

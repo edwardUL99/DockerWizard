@@ -2,6 +2,8 @@
 This module holds all the builtin commands
 """
 import os
+from os import environ
+import shutil
 
 from .commands import AbstractCommand
 from .errors import CommandError
@@ -18,19 +20,22 @@ class CopyCommand(AbstractCommand):
     def __init__(self):
         super().__init__('copy', 2)
 
+    @staticmethod
+    def _call_copy_tree(from_arg, to_arg):
+        shutil.copytree(from_arg, to_arg)
+
+    @staticmethod
+    def _call_copy(from_arg, to_arg):
+        shutil.copy(from_arg, to_arg, follow_symlinks=True)
+
     def _execute(self, args: list):
-        import shutil
-        from functools import partial
+        from_arg = args[0]
+        to_arg = args[1]
 
-        if len(args) != 2:
-            raise CommandError('The copy command needs 2 arguments')
+        if os.path.isdir(from_arg):
+            CopyCommand._call_copy_tree(from_arg, to_arg)
         else:
-            from_arg = args[0]
-            to_arg = args[1]
-            command = partial(shutil.copytree, from_arg, to_arg) if os.path.isdir(from_arg) \
-                else partial(shutil.copy, from_arg, to_arg, follow_symlinks=True)
-
-            command()
+            CopyCommand._call_copy(from_arg, to_arg)
 
     def default_name(self):
         return 'Copy Files'
@@ -42,7 +47,6 @@ class ExecuteSystemCommand(AbstractCommand):
     """
     def __init__(self):
         super().__init__('execute-shell', 1, at_least=True)
-        self._windows = isWindows()
 
     def _resolve_bash(self, args: list):
         """
@@ -52,9 +56,10 @@ class ExecuteSystemCommand(AbstractCommand):
         first_arg = args[0]
         bash = 'bash'
 
-        if first_arg == bash and self._windows:
+        if first_arg == bash and isWindows():
             warn('Build is running on a Windows machine and the bash command is used in the execute-shell command. '
                  'Attempting to use bash emulator')
+
             warn('However, this should be avoided by using a Windows specific build file as the stability of the '
                  'build is not guaranteed')
             args[0] = DOCKER_WIZARD_BASH_PATH if DOCKER_WIZARD_BASH_PATH else bash
@@ -64,36 +69,33 @@ class ExecuteSystemCommand(AbstractCommand):
         return False
 
     def _execute(self, args: list):
-        if len(args) < 1:
-            raise CommandError('The execute-shell command needs at least one argument')
+        bash_resolved = self._resolve_bash(args)
+        execution = Execution(args).execute()
+
+        if bash_resolved and isWindows():
+            # restore color after executing bash as it can reset the colors
+            os.system('color')
+
+        if not execution.is_healthy():
+            raise CommandError(f'System command failed with stderr: {execution.stderr} and exit code:'
+                               f' {execution.exit_code}')
         else:
-            bash_resolved = self._resolve_bash(args)
-            execution = Execution(args).execute()
-
-            if bash_resolved and self._windows:
-                # restore color after executing bash as it can reset the colors
-                os.system('color')
-
-            if not execution.is_healthy():
-                raise CommandError(f'System command failed with stderr: {execution.stderr} and exit code:'
-                                   f' {execution.exit_code}')
+            if execution.stdout == '' and execution.stderr != '':
+                warn('Execution standard output is empty but stderr is not with 0 exit code. '
+                     'This is confusing and should be avoided')
+                split = execution.stderr.splitlines()
             else:
-                if execution.stdout == '' and execution.stderr != '':
-                    warn('Execution standard output is empty but stderr is not with 0 exit code. '
-                         'This is confusing and should be avoided')
-                    split = execution.stderr.splitlines()
-                else:
-                    split = execution.stdout.splitlines()
+                split = execution.stdout.splitlines()
 
-                joined = ' '.join(args)
+            joined = ' '.join(args)
 
-                if len(split) == 0:
-                    info(f'Command {joined} completed successfully with no output')
-                else:
-                    info(f'Command {joined} completed successfully with the following output')
+            if len(split) == 0:
+                info(f'Command {joined} completed successfully with no output')
+            else:
+                info(f'Command {joined} completed successfully with the following output')
 
-                    for line in split:
-                        info(f'\t{line}')
+                for line in split:
+                    info(f'\t{line}')
 
     def default_name(self):
         return 'Execute System Command'
@@ -108,16 +110,15 @@ class SetVariableCommand(AbstractCommand):
         super().__init__('set-secret' if secret else 'set-variable', 2)
 
     def _execute(self, args: list):
-        from os import environ
         self._do_set(args[0], args[1], environ)
 
-    def _do_set(self, name: str, value: str, environ):
+    def _do_set(self, name: str, value: str, environs):
         if self.secret:
             info(f'Setting secret variable {name}')
         else:
             info(f'Setting variable {name} with value {value}')
 
-        environ[name] = value
+        environs[name] = value
 
     def default_name(self):
         return 'Set Variable'
@@ -131,8 +132,6 @@ class SetVariablesCommand(AbstractCommand):
         super().__init__('set-variables', 1, True)
 
     def _execute(self, args: list):
-        from os import environ
-
         for arg in args:
             split = arg.split("=")
 
@@ -186,8 +185,9 @@ def register_builtins():
     Registers the builtin commands
     :return: None
     """
-    for command in [CopyCommand, ExecuteSystemCommand, SetVariableCommand(False), SetVariableCommand(True),
-                    SetVariablesCommand, GitCloneCommand()]:
-        if isinstance(command, type):
-            # has to be instantiated
-            command()
+    # commands that are already instantiated like below are left out of below list
+    SetVariableCommand(False)
+    SetVariableCommand(True)
+
+    for command in [CopyCommand, ExecuteSystemCommand, SetVariablesCommand, GitCloneCommand]:
+        command()

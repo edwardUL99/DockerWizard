@@ -4,7 +4,7 @@ Constants for the project
 import os
 
 # the version of the tool
-VERSION = '1.0.0a6 (alpha)'
+VERSION = '1.0.0a7 (alpha)'
 
 # name of environment variable for docker wizard home
 DOCKER_WIZARD_HOME_VAR = 'DOCKER_WIZARD_HOME'
@@ -23,4 +23,7 @@ DOCKER_WIZARD_BASH_PATH = os.environ.get('DOCKER_WIZARD_BASH_PATH')
 
 # the default name for the custom commands file
 CUSTOM_COMMANDS = 'custom-commands.yaml'
+
+# name of environment variable flag to identify if testing is in progress
+DOCKER_WIZARD_TESTING_NAME = 'DOCKER_WIZARD_TESTING'
 

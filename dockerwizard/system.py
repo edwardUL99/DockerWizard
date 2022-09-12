@@ -7,9 +7,6 @@ from typing import Callable, List
 from enum import Enum
 
 
-_system = platform.system().lower()
-
-
 class OSTypes(Enum):
     """
     An enum representing the supported OS types
@@ -20,12 +17,19 @@ class OSTypes(Enum):
     ALL = '*'  # An os type that means a init step should run regardless of os type
 
 
+def _system():
+    """
+    Returns a normalized version of the platform system
+    """
+    return platform.system().lower()
+
+
 def isWindows() -> bool:
     """
     Returns true if the OS is windows
     :return: true if OS is windows
     """
-    return _system == OSTypes.WINDOWS.value
+    return _system() == OSTypes.WINDOWS.value
 
 
 def isLinux() -> bool:
@@ -33,7 +37,7 @@ def isLinux() -> bool:
     Returns true if the OS is linux
     :return: true if OS is linux
     """
-    return _system == OSTypes.LINUX.value
+    return _system() == OSTypes.LINUX.value
 
 
 def isMac() -> bool:
@@ -41,7 +45,7 @@ def isMac() -> bool:
     Returns true if the OS is mac
     :return: true if OS is mac
     """
-    return _system == OSTypes.MAC.value
+    return _system() == OSTypes.MAC.value
 
 
 class SystemInitialisation:
@@ -62,7 +66,7 @@ class SystemInitialisation:
         Perform the initialisation if the current OS matches the OS type
         :return: None
         """
-        if self.os_type == OSTypes.ALL.value or _system == self.os_type:
+        if self.os_type == OSTypes.ALL.value or _system() == self.os_type:
             self.callback()
 
 

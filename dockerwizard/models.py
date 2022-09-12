@@ -100,7 +100,7 @@ class PropertySetter:
         if self.required and not value:
             self._error(f'{self.name} not found')
         else:
-            if value:
+            if value is not None:
                 validate_error = self.validate(value) if self.validate is not None else None
 
                 if validate_error is not None:
@@ -236,8 +236,6 @@ class DockerBuild(BaseFileObject):
                 self.custom_commands = os.path.join(get_working_directory(), self.custom_commands)
 
     def do_initialise(self, data: BuildFileData):
-        import os
-
         def validate_file_library(path: str):
             if not os.path.isdir(path):
                 return f'{path} is not a directory'
@@ -251,10 +249,12 @@ class DockerBuild(BaseFileObject):
 
         data.set_properties(setters, self)
 
-        if data.get_property('dockerfile') is None:
+        dockerfile_data = data.get_property('dockerfile')
+
+        if dockerfile_data is None:
             raise BuildConfigurationError(f'dockerfile is a required property')
 
-        self.dockerfile.initialise(data.get_property('dockerfile'))
+        self.dockerfile.initialise(dockerfile_data)
 
         self._convert_custom_commands()
 
