@@ -3,11 +3,10 @@ This tests the entrypoint module
 """
 import argparse
 import contextlib
-import os.path
 import unittest
 from unittest.mock import MagicMock
 
-from .testing import main, PatchedDependencies, patch_os_path
+from .testing import main, PatchedDependencies, patch_os_path, test_join
 from dockerwizard import entrypoint
 from dockerwizard.models import DockerBuild
 
@@ -65,7 +64,7 @@ class EntrypointTest(unittest.TestCase):
             patched.get('initPatch').assert_called()
             patched.get('changeDir').assert_any_call(wizard_home)
             patched.get('loadCustom').assert_not_called()
-            patched.get('buildParser').return_value.parse.assert_called_with(os.path.join(workdir, 'file.yaml'))
+            patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'file.yaml'))
             patched.get('builder').return_value.build.assert_called()
 
     def test_entrypoint_custom(self):
@@ -87,7 +86,7 @@ class EntrypointTest(unittest.TestCase):
             patched.get('initPatch').assert_called()
             patched.get('changeDir').assert_any_call(wizard_home)
             patched.get('loadCustom').assert_called_with('commands.yaml')
-            patched.get('buildParser').return_value.parse.assert_called_with(os.path.join(workdir, 'file.yaml'))
+            patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'file.yaml'))
             patched.get('builder').return_value.build.assert_called()
 
     def test_entrypoint_custom_not_found(self):
@@ -180,7 +179,7 @@ class EntrypointTest(unittest.TestCase):
             patched.get('initPatch').assert_called()
             patched.get('changeDir').assert_any_call(wizard_home)
             patched.get('loadCustom').assert_not_called()
-            patched.get('buildParser').return_value.parse.assert_called_with(os.path.join(workdir, 'file.yaml'))
+            patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'file.yaml'))
             patched.get('builder').return_value.build.assert_called()
 
 
