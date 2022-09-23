@@ -1,0 +1,14 @@
+# Write your integration test build file here. See the build.yaml file in /home/eddy/Coding/Python/DockerWizard/dockerwizard/tests/integration/../example_integration for a sample
+build:
+  image: 'image'
+  dockerfile:
+    path: 'Dockerfile'
+  library: '.'
+  files:
+    - path: 'script.sh'
+  steps:
+    - name: 'Name of step'
+      command: 'sample-command'
+      arguments:
+        - 'argument'
+  # after steps complete, the framework will run docker build

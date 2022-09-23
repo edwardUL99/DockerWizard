@@ -1,0 +1,8 @@
+# lists itutils program modules relative to this directory. All modules should have a setup_sub_parser
+# method which takes a subparsers object which add_parser can be called and arguments can be added to the subparsers
+# It should also take a parameter of a dictionary and register its action (as used in the parser, e.g. 'create') and
+# the entrypoint method which takes an args parameter
+programs:
+  - 'mockproggen'
+  - 'itgen'
+  - 'itrunner'

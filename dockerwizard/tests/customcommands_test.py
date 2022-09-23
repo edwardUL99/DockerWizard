@@ -150,7 +150,9 @@ class CustomCommandsTests(unittest.TestCase):
             patched.get('osPatch').path.isfile.assert_called()
             patched.get('osPatch').path.isabs.assert_called()
             patched.get('getWorkDir').assert_called()
-            patched.get('importlib').import_module.assert_not_called()
+
+            patched.get('importlib').import_module.return_value = customcommands._LOADED_MODULES['custom']
+            customcommands.load_custom('custom-commands.yaml')  # shouldn't raise since they're the same modules
 
     def test_change_and_load_custom(self):
         patched: PatchedDependencies

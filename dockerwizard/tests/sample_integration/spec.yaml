@@ -1,0 +1,13 @@
+mock_programs:
+  - file: 'commands/docker'
+    args: 'build --tag image .'
+    output: 'image built'
+  - file: 'commands/bash'
+    args: 'set-message.sh'
+    output: 'set messages'
+  - file: 'commands/ls'
+    args: '-al'
+    output: 'ls output'
+args: 'build.yaml'
+# you need a build.yaml file defining the build. The itrunner will create a build_test.yaml file which has injected
+# variables which will be the actual build file used

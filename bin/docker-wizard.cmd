@@ -35,5 +35,5 @@ exit /b 2
 
 
 :Error
-echo [[31mERROR[0m] %~1
+echo [[31mERROR[0m] %~1 1>&2
 exit /b 0

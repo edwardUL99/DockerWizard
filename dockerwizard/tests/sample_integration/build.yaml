@@ -1,0 +1,48 @@
+# A build object is identified by the build tag
+build:
+  # image represents the tag name of the resulting Docker image
+  image: 'image'
+  # file object representing dockerfile
+  dockerfile:
+    path: 'Dockerfile'
+  # specifies a path to where files should be retrieved from when relative to file library
+  library: '.'
+  # list of file objects to copy to build directory
+  files:
+    # can also define absolute path (same with dockerfile)
+    # - path: '/absolute/path/to/file'
+    #   relative_to_library: false
+    - path: 'set-message.sh'
+  # steps to execute before building the docker image
+  steps:
+    # steps are executed with build directory as the working directory
+    # after each step executes, the working directory is reset to the build directory
+    - name: 'Set message environment variable'
+      command: 'set-variable'
+      arguments:
+        - 'MESSAGE'
+        - 'Hello World from the sample DockerBuild build file'
+    - name: 'Set multiple variables to demonstrate set-variables command'
+      command: 'set-variables'
+      arguments:
+        - 'key1=this is a value'
+        - 'key2=this is another value'
+    - name: 'Print variables to verify variables are set'
+      command: 'execute-shell'
+      arguments:
+        - 'echo'
+        - '"Value of key1 is: $key1"'
+        - '&&'
+        - 'echo'
+        - '"Value of key2 is: $key2"'
+    - name: 'Generate message.txt using set-message.sh'
+      command: 'execute-shell'
+      arguments:
+        - 'bash' # if Windows, the framework will try to resolve bash to a bash emulator either through WSL or set with DOCKER_WIZARD_BASH_PATH env variable
+        - 'set-message.sh'
+    - name: 'View contents of build directory after build'
+      command: 'execute-shell'
+      arguments:
+        - 'ls'
+        - '-al'
+    # after steps complete, the framework will run docker build

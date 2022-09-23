@@ -88,9 +88,9 @@ def main():
     """
     initialise_system()
 
+    args = parse()
     # change directory as custom commands and other system initialisations are done relative to docker builder home
     change_directory(_docker_wizard_home())
-    args = parse()
     _load_custom_commands(args.custom)
     change_back()  # now change back to where script was called from
 

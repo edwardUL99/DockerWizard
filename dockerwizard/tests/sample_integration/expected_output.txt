@@ -1,0 +1,25 @@
+[[32mINFO[0m] Parsing build file /home/eddy/Coding/Python/DockerWizard/dockerwizard/tests/sample_integration/build_test.yaml
+[[32mINFO[0m] Copying Dockerfile and required files to build directory
+[[32mINFO[0m] Copying Dockerfile Dockerfile from library to build directory
+[[32mINFO[0m] Copying file set-message.sh from library to build directory
+[[32mINFO[0m] Dockerfile and required files successfully copied to build directory
+[[32mINFO[0m] Changing working directory to build directory
+[[32mINFO[0m] Executing build steps
+[[32mINFO[0m] Executing build step 1 - Set message environment variable
+[[32mINFO[0m] Setting variable MESSAGE with value Hello World from the sample DockerBuild build file
+[[32mINFO[0m] Executing build step 2 - Set multiple variables to demonstrate set-variables command
+[[32mINFO[0m] Executing build step 3 - Print variables to verify variables are set
+[[32mINFO[0m] Command echo "Value of key1 is: $key1" && echo "Value of key2 is: $key2" completed successfully with the following output
+[[32mINFO[0m] 	Value of key1 is: this is a value
+[[32mINFO[0m] 	Value of key2 is: this is another value
+[[32mINFO[0m] Executing build step 4 - Generate message.txt using set-message.sh
+[[32mINFO[0m] Command bash set-message.sh completed successfully with the following output
+[[32mINFO[0m] 	set messages
+[[32mINFO[0m] Executing build step 5 - View contents of build directory after build
+[[32mINFO[0m] Command ls -al completed successfully with the following output
+[[32mINFO[0m] 	ls output
+[[32mINFO[0m] Building Docker image with tag image
+[[32mINFO[0m] Docker image with tag image built successfully with the following output:
+[[32mINFO[0m] 	image built
+[[32mINFO[0m] Build finished, changing back to working directory
+[[32mINFO[0m] BUILD SUCCEEDED

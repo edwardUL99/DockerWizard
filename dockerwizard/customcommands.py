@@ -33,12 +33,13 @@ def _load_module(path: str):
             sys.path.insert(0, module_dir)
             inserted = True  # mark that we inserted the module directory and not someone else so we can remove it
 
-        if module in _LOADED_MODULES:
+        loaded_module = importlib.import_module(module)
+
+        if module in _LOADED_MODULES and _LOADED_MODULES[module] is not loaded_module:
             raise BuildConfigurationError(f'Custom commands module {module} from '
                                           f'{os.path.join(module_dir, module_file)} is conflicting with an existing'
                                           ' module of the same name')
 
-        loaded_module = importlib.import_module(module)
         _LOADED_MODULES[module] = loaded_module
 
         if inserted:

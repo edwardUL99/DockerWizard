@@ -1,0 +1,7 @@
+#!/usr/bin/env bash
+
+directory=$(dirname "$0")
+
+cd "$directory"
+
+integration/itutils run "*_integration" -g

@@ -1,0 +1,55 @@
+#!/usr/bin/env python
+
+"""
+An entrypoint into the integration test "framework"
+"""
+import argparse
+import importlib
+import yaml
+import os
+from typing import Dict
+
+from interfaces import IntegrationProgram, construct_program
+
+
+_programs: Dict[str, IntegrationProgram] = {}
+
+
+def _load_programs(subparsers):
+    loaded = []
+
+    with open(os.path.join(os.path.dirname(__file__), 'programs.yaml'), 'r') as stream:
+        programs_yaml = yaml.safe_load(stream)
+
+    for program_module in programs_yaml.get('programs'):
+        module = importlib.import_module(program_module)
+        programs = [p for p in IntegrationProgram.__subclasses__() if p not in loaded and
+                    p.__module__ == module.__name__]
+
+        for program in programs:
+            constructed = construct_program(subparsers, program)
+            _programs[constructed.name] = constructed
+            loaded.append(program)
+
+
+def parse_args():
+    parser = argparse.ArgumentParser(description='Provides a suite of functionality for integration tests'
+                                                 ' of the DockerWizard project')
+    subparsers = parser.add_subparsers(title='actions', dest='action', required=True)
+    _load_programs(subparsers)
+
+    return parser.parse_args(), parser
+
+
+def main():
+    args, parser = parse_args()
+    action = _programs.get(args.action)
+
+    if not action:
+        parser.print_help()
+    else:
+        action.run(args)
+
+
+if __name__ == '__main__':
+    main()

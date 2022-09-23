@@ -1,4 +1,4 @@
-#!/usr/bin/env bash
+#!/usr/bin/bash
 
 # The wrapper script to run the dockerwizard module
 
@@ -6,7 +6,7 @@ ARGS="${@:1}"
 export DOCKER_WIZARD_CMD_NAME="docker-wizard"
 
 function error() {
-  echo -e "[\u001b[31mERROR\u001b[0m] $1"
+  >&2 echo -e "[\u001b[31mERROR\u001b[0m] $1"
 }
 
 function verify_home() {
