@@ -65,13 +65,16 @@ not installed)
 ## Run
 To run the tool, you have the following usage:
 
-`docker-wizard [-h] [-w  WORKDIR] [-c CUSTOM] file`
+`docker-wizard [-h] [-w  WORKDIR] [-c CUSTOM] [-v] [-b] file`
 
 The arguments are as follows:
 - **-h**: Prints usage help information
 - **-w**: Specify the working directory (not build directory) to retrieve `file` from
 - **-c**: Custom path to custom commands specification file, otherwise `custom-commands.yaml` is attempted to be
-retrieved from `DOCKER_WIZARD_HOME`
+retrieved from project directory or `DOCKER_WIZARD_HOME`
+- **-v**: Print the version and system information for the tool and immediately exit
+- **-b**: Print help information for all the builtin commands in the tool (similar to the builtin commands descriptions
+below) and immediately exit
 - **file**: The path relative to the working directory either from where the command is run or specified by `-w` to the
 build specification file
 
@@ -107,6 +110,7 @@ build:
     path: 'Dockerfile'
   # specifies a path to where files should be retrieved from when relative to file library
   library: 'files'
+  custom_commands: 'custom-commands.yaml'
   # list of file objects to copy to build directory
   files:
     - path: 'hello-world.py'
@@ -147,6 +151,13 @@ build:
         - 'ls'
         - '-al'
     # after steps complete, the framework will run docker build
+  post:
+    # optional steps to run after successful docker build
+    - name: 'Create a container from the built image'
+      command: 'create-container'
+      arguments:
+        - 'hello-world'
+        - 'hello-world-docker-build'
 ```
 This example is designed to run on Unix machines. To run it, run the following command from root of project:
 
@@ -167,18 +178,30 @@ list of arguments to the command. The list of built-in commands are as follows:
 - **set-variable**: Sets an environment variable with provided value, logging it to the console
   - *Arguments*: 2 arguments
     - 1: Name of the variable
-    - 2: Destination
+    - 2: Value
 - **set-secret**: Sets an environment variable with provided value, however does not log the value to console since the
 value is treated as a secret
   - *Arguments*: 2 arguments
-    - 1: Source file
-    - 2: Destination
+    - 1: Name of the variable
+    - 2: Value
 - **set-variables**: Provides the ability to set multiple environment variables by supplying key=value pairs
   - *Arguments*: 1 or more arguments
 - **git-clone**: Clones a git repository into the build directory
   - *Arguments*: At least 1 argument, with optional 2nd argument
     - 1: URL of git repository
     - 2: Optional name of target directory to clone into
+- **execute-groovy**: Executes a groovy script
+  - *Arguments*: 1 or more arguments where one of the arguments must be a groovy script file ending in .groovy. The rest
+  of the arguments can be flags passed to the groovy interpreter
+- **execute-python**: Executes a python script
+  - *Arguments*: 1 or more arguments where one of the arguments must be a python script file ending in .py. The rest of
+  the arguments can be flags passed to the python interpreter
+- **create-container**: Create a Docker container. Always creates containers in detached mode (-d)
+  - *Arguments*: 2 or more arguments can be provided but the order must match the following
+    - 1: The name of the container to create
+    - 2: The tag/image of the container to run. Any command to execute in the created container can be passed into this
+    string also, separated by spaces
+    - *optional extra arguments like -p, --network etc. to pass to the docker run command*
 
 ### Custom Commands
 You can define your own custom commands to perform your use-case specific tasks. The general process for defining a
@@ -193,14 +216,18 @@ of the command (name is what is referred to in the build file) and arguments req
 - In the created class, override the `_execute` method which is a hook called by `AbstractCommand` after validating
 arguments
 - If the command needs to throw an error, raise an instance of `CommandError`
-- Then, define a `DOCKER_WIZARD_HOME/custom-commands.yaml` file with the following structure:
+- Then, define a custom-commands.yaml file in the project working directory or a
+`DOCKER_WIZARD_HOME/custom-commands.yaml` file with the following structure:
 ```yaml
 # If the file path is relative, it is read relative to the directory the custom-commands.yaml file is in
 commands:
   - file: 'path/to/file.py'
     class: 'SampleCustomCommand'
 ```
-You can also define the file somewhere else and pass the path in with the **-c** flag
+You can also define the file somewhere else and pass the path in with the **-c** flag. The search order is as follows:
+1. Path passed in with the **-c** flag. If it is relative, it is resolved relative to build working directory
+2. `custom-commands.yaml` file found in project working directory
+3. `custom-commands.yaml` file found in the `DOCKER_WIZARD_HOME` directory
 
 The following is a sample custom-commands.yaml file and a sample python file (both contained in `example`)
 containing the definitions of a sample command:
@@ -225,9 +252,9 @@ if project_home not in path:
     path.append(project_home)
 
 # custom commands should extend this abstract command
-from dockerwizard.commands import AbstractCommand
+from dockerwizard import AbstractCommand
 # any command errors should be raised as an instance of CommandError
-from dockerwizard.errors import CommandError
+from dockerwizard import CommandError
 from dockerwizard import cli
 
 

@@ -36,7 +36,7 @@ class CommandRegistry:
     """
 
     def __init__(self):
-        self._commands = {}
+        self.commands = {}
 
     def register(self, name: str, command: Command):
         """
@@ -45,7 +45,7 @@ class CommandRegistry:
         :param command: the command to register
         :return: None
         """
-        self._commands[name] = command
+        self.commands[name] = command
 
     def get_command(self, name: str) -> Command:
         """
@@ -53,7 +53,7 @@ class CommandRegistry:
         :param name: the name of the command to retrieve
         :return: the retrieved command
         """
-        command = self._commands.get(name)
+        command = self.commands.get(name)
 
         if command is None:
             raise ValueError(name)

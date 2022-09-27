@@ -255,9 +255,11 @@ class IntegrationRunnerProgram(IntegrationProgram):
 
         directory = IntegrationRunnerProgram._validate_directory(directory, skip=glob_part)
         spec = IntegrationRunnerProgram._parse_spec(os.path.join(directory, 'spec.yaml'))
+        previous_dir = os.getcwd()
         os.chdir(directory)
         IntegrationRunnerProgram._validate_spec(spec, directory)
         IntegrationRunnerProgram._execute_spec(spec)
+        os.chdir(previous_dir)
 
     def run(self, args: argparse.Namespace):
         do_glob = args.glob

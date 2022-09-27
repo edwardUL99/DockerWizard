@@ -1,19 +1,33 @@
 """
 Tests the system module
 """
-
+import contextlib
 import unittest
-from unittest.mock import patch, Mock
+from unittest.mock import Mock
 
-
-from .testing import main
+from .testing import main, PatchedDependencies
 from dockerwizard import system
 
 
 class SystemTest(unittest.TestCase):
+    @contextlib.contextmanager
+    def _patch(self, patch_docker_wizard_home: bool = False) -> PatchedDependencies:
+        patch = {
+            'system': 'platform.system',
+            'register_builtins': 'dockerwizard.system.register_builtins',
+            'os_environ_get': 'os.environ.get',
+            'os_path_isdir': 'os.path.isdir'
+        }
+
+        if patch_docker_wizard_home:
+            patch['docker_home'] = 'dockerwizard.system.docker_wizard_home'
+
+        with PatchedDependencies(patch) as patched:
+            yield patched
+
     def _test(self, func, platform_system, expected_return: bool):
-        with patch('platform.system') as patched:
-            patched.return_value = platform_system
+        with self._patch() as patched:
+            patched.get('system').return_value = platform_system
             return_val = func()
             self.assertEqual(expected_return, return_val)
 
@@ -38,8 +52,8 @@ class SystemTest(unittest.TestCase):
 
         init = system.SystemInitialisation(os_type, callback)
 
-        with patch('platform.system') as patched:
-            patched.return_value = os_type.value
+        with self._patch() as patched:
+            patched.get('system').return_value = os_type.value
             init.initialise()
             callback.assert_called()
 
@@ -49,21 +63,24 @@ class SystemTest(unittest.TestCase):
             callback.assert_called()
 
     def test_docker_wizard_home(self):
-        with patch('os.environ.get') as patched, patch('os.path.isdir') as patchedDir:
-            patched.return_value = 'docker-wizard-home'
-            patchedDir.return_value = True
+        with self._patch() as patched:
+            patched_get = patched.get('os_environ_get')
+            patched_dir = patched.get('os_path_isdir')
+            patched_get.return_value = 'docker-wizard-home'
+            patched_dir.return_value = True
             self.assertEqual('docker-wizard-home', system.docker_wizard_home())
-            patchedDir.return_value = False
+            patched_dir.return_value = False
 
             with self.assertRaises(SystemError):
                 system.docker_wizard_home()
 
-            patched.return_value = None
+            patched_get.return_value = None
 
             with self.assertRaises(SystemError):
                 system.docker_wizard_home()
 
     def test_system_init_registrations(self):
+        old_initialisations = system._initialisations
         system._initialisations = []
         initialized = False
 
@@ -86,6 +103,14 @@ class SystemTest(unittest.TestCase):
         system.initialise_system()
 
         self.assertTrue(initialized)
+        system._initialisations = old_initialisations
+
+    def test_default_initialisations(self):
+        with self._patch(True) as patched:
+            system.initialise_system()
+
+            patched.get('docker_home').assert_called()
+            patched.get('register_builtins').assert_called()
 
 
 if __name__ == '__main__':

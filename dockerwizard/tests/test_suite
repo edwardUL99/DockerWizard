@@ -1,0 +1,14 @@
+#/usr/bin/env bash
+
+base_dir=$(dirname $0)
+
+"$base_dir"/test
+
+exit_code="$?"
+
+if [ "$?" -ne "0" ]; then
+    exit "$exit_code"
+else
+    "$base_dir"/run_its
+    exit "$?"
+fi

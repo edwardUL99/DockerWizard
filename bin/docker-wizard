@@ -41,3 +41,5 @@ SCRIPT="$DOCKER_WIZARD_HOME/main.py"
 verify_home
 
 python "$SCRIPT" $ARGS
+
+exit $?

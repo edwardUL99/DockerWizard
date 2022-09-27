@@ -20,9 +20,9 @@ class CommandRegistryTest(unittest.TestCase):
 
     def test_register(self):
         name = 'name'
-        self.assertTrue(name not in self.registry._commands)
+        self.assertTrue(name not in self.registry.commands)
         self.registry.register(name, StubCommand())
-        self.assertTrue(name in self.registry._commands)
+        self.assertTrue(name in self.registry.commands)
 
     def test_get_command(self):
         name = 'name'

@@ -6,6 +6,7 @@ import unittest
 from unittest.mock import Mock
 
 import dockerwizard.errors
+from dockerwizard.process import ExecutionResult
 from .testing import main, PatchedDependencies, patch_os_path
 from dockerwizard import builtincommands
 
@@ -46,6 +47,11 @@ step2.command = 'test2-command'
 step2.arguments = ['arg', '2']
 steps = [step1, step2]
 
+step3 = models.BuildStep()
+step3.name = 'test3'
+step3.arguments = ['arg']
+post_steps = [step3]
+
 working_dir = '/path/workdir'
 
 
@@ -78,6 +84,7 @@ class BuilderTest(unittest.TestCase):
         self.builder = None
         self.test1_command = None
         self.test2_command = None
+        self.test3_command = None
 
     @classmethod
     def tearDownClass(cls) -> None:
@@ -92,12 +99,14 @@ class BuilderTest(unittest.TestCase):
         config.custom_commands = custom_commands
         config.files = files
         config.steps = steps
+        config.post_steps = post_steps
 
         builder.create_temp_directory.return_value = StubTempDir()
         self.builder = builder.Builder(config)
 
         self.test1_command = StubCommand()
         self.test2_command = StubCommand()
+        self.test3_command = StubCommand()
 
     @contextlib.contextmanager
     def _patch(self) -> PatchedDependencies:
@@ -110,35 +119,38 @@ class BuilderTest(unittest.TestCase):
             'error': f'{base_package}.error',
             'registry': f'{base_package}.registry',
             'changeLoadCustom': f'{base_package}.change_and_load_custom',
-            'registerBuiltins': f'{base_package}.register_builtins',
-            'execution': f'{base_package}.Execution'
+            'docker': f'{base_package}.DockerClient'
         }) as patched:
             patched.osPatch.path = patch_os_path()
             patched.shutil.copy = Mock()
 
+            patched.docker.build_docker_image = Mock()
+
             def registry_side_effect(name):
-                if name == step1.command:
-                    return self.test1_command
-                elif name == step2.command:
-                    return self.test2_command
-                else:
+                commands = {
+                    step1.command: self.test1_command,
+                    step2.command: self.test2_command,
+                    step3.command: self.test3_command
+                }
+
+                command = commands.get(name)
+
+                if not command:
                     raise ValueError
+
+                return command
 
             patched.registry.get_command = Mock()
             patched.registry.get_command.side_effect = registry_side_effect
 
-            mocked_execution = Mock()
-            patched.execution.return_value = Mock()
-            patched.execution.return_value.execute.return_value = mocked_execution
-            mocked_execution.is_healthy = Mock()
-
             yield patched
 
     def test_successful_build(self):
+        docker_build = ExecutionResult(0, 'stdout', '')
+
         patched: PatchedDependencies
         with self._patch() as patched:
-            patched.execution.return_value.execute.return_value.is_healthy.return_value = True
-            patched.execution.return_value.execute.return_value.stdout = 'stdout'
+            patched.docker.build_docker_image.return_value = docker_build
 
             return_val = self.builder.build()
 
@@ -154,12 +166,12 @@ class BuilderTest(unittest.TestCase):
             patched.registry.get_command.assert_any_call(step2.command)
             self.assertTrue(self.test1_command.executed)
             self.assertTrue(self.test2_command.executed)
+            self.assertTrue(self.test3_command.executed)
             self.assertEqual(step1.arguments, self.test1_command.args)
             self.assertEqual(step2.arguments, self.test2_command.args)
+            self.assertEqual(step3.arguments, self.test3_command.args)
 
-            patched.execution.assert_called_with(['docker', 'build', '--tag', image, '.'])
-            patched.execution.return_value.execute.assert_called()
-            patched.execution.return_value.execute.return_value.is_healthy = True
+            patched.docker.build_docker_image.assert_called_with(image)
 
             self.builder._working_directory.cleanup.assert_called()
             patched.changeBack.assert_called()
@@ -179,14 +191,17 @@ class BuilderTest(unittest.TestCase):
             patched.info.assert_any_call(f'Building Docker image with tag {image}')
             patched.info.assert_any_call(f'Docker image with tag {image} built successfully with the following output:')
             patched.info.assert_any_call(f'\tstdout')
+            patched.info.assert_any_call('Executing post-build steps')
+            patched.info.assert_any_call(f'Executing post-build step 1 - {step3.name}')
             patched.info.assert_any_call('Build finished, changing back to working directory')
             patched.info.assert_any_call('BUILD SUCCEEDED')
 
     def test_successful_build_without_custom_commands(self):
+        docker_build = ExecutionResult(0, 'stdout', '')
+
         patched: PatchedDependencies
         with self._patch() as patched:
-            patched.execution.return_value.execute.return_value.is_healthy.return_value = True
-            patched.execution.return_value.execute.return_value.stdout = 'stdout'
+            patched.docker.build_docker_image.return_value = docker_build
             self.builder.config.custom_commands = None
 
             return_val = self.builder.build()
@@ -195,10 +210,11 @@ class BuilderTest(unittest.TestCase):
             patched.changeLoadCustom.assert_not_called()
 
     def test_failed_build_unknown_command(self):
+        docker_build = ExecutionResult(0, 'stdout', '')
+
         patched: PatchedDependencies
         with self._patch() as patched:
-            patched.execution.return_value.execute.return_value.is_healthy.return_value = True
-            patched.execution.return_value.execute.return_value.stdout = 'stdout'
+            patched.docker.build_docker_image.return_value = docker_build
             unknown_step = models.BuildStep()
             unknown_step.command = 'unknown'
             self.builder.config.steps = [unknown_step]
@@ -209,10 +225,11 @@ class BuilderTest(unittest.TestCase):
             self.assertTrue('Unknown command' in e.exception.message)
 
     def test_failed_build_command_error(self):
+        docker_build = ExecutionResult(0, 'stdout', '')
+
         patched: PatchedDependencies
         with self._patch() as patched:
-            patched.execution.return_value.execute.return_value.is_healthy.return_value = True
-            patched.execution.return_value.execute.return_value.stdout = 'stdout'
+            patched.docker.build_docker_image.return_value = docker_build
             self.test1_command.throw_error = True
 
             return_val = self.builder.build()
@@ -223,11 +240,10 @@ class BuilderTest(unittest.TestCase):
             patched.error.assert_any_call('BUILD FAILED')
 
     def test_failed_build_docker_error(self):
+        failed_docker = ExecutionResult(1, '', 'error')
         patched: PatchedDependencies
         with self._patch() as patched:
-            patched.execution.return_value.execute.return_value.is_healthy.return_value = False
-            patched.execution.return_value.execute.return_value.stderr = 'error'
-            patched.execution.return_value.execute.return_value.exit_code = 1
+            patched.docker.build_docker_image.return_value = failed_docker
 
             return_val = self.builder.build()
 

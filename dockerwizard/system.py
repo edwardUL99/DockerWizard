@@ -14,7 +14,7 @@ class OSTypes(Enum):
     WINDOWS = 'windows'
     LINUX = 'linux'
     MAC = 'darwin'
-    ALL = '*'  # An os type that means a init step should run regardless of os type
+    ALL = '*'  # An os type that means an init step should run regardless of os type
 
 
 def _system():
@@ -61,6 +61,7 @@ class SystemInitialisation:
         self.os_type = os_type.value
         self.callback = callback
 
+
     def initialise(self):
         """
         Perform the initialisation if the current OS matches the OS type
@@ -85,8 +86,24 @@ def docker_wizard_home():
     return var
 
 
+def register_builtins():
+    """
+    Registers builtin commands
+    """
+    # import here to avoid a circular import error
+    from .builtincommands import register_builtins as _register
+    _register()
+
+
+# We use lambdas as they allow for easy testing. i.e. we can mock docker_wizard_home and register_builtins
+# to assert they were called. If we passed the functions without lambdas and just a function reference, e.g.
+# docker_wizard_home, even if we tried to patch docker_wizard_home to be a mock, the value passed into the init object
+# is set to the un-mocked equivalent as the system module is imported
+# With lambda, docker_wizard_home and register_builtins functions are resolved when the lambdas are called, and when
+# this is in a test, these functions are mocks instead of the real ones
 _initialisations: List[SystemInitialisation] = [
-    SystemInitialisation(OSTypes.ALL, docker_wizard_home)
+    SystemInitialisation(OSTypes.ALL, lambda: docker_wizard_home()),
+    SystemInitialisation(OSTypes.ALL, lambda: register_builtins())
 ]
 
 

@@ -35,6 +35,10 @@ class IntegrationGenerationProgram(IntegrationProgram):
         shutil.copy(os.path.join('resources', '_it_library.py'), it_file)
         shutil.copy(os.path.join('resources', '_post_sample.py'), post_file)
 
+        with open(os.path.join(directory, 'Dockerfile'), 'w'):
+            # create empty file
+            pass
+
     def run(self, args: argparse.Namespace):
         directory = args.directory
 

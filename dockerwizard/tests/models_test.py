@@ -241,6 +241,39 @@ class BuildStepsTest(unittest.TestCase):
 
             self.assertTrue('steps does not exist in BuildFileData' in e.exception.message)
 
+    def test_post_build_steps(self):
+        step = models.BuildFileData({
+            'name': 'name',
+            'command': 'test-command',
+            'arguments': ['ls', '-l']
+        })
+        data = models.BuildFileData({
+            'post': [
+                step
+            ]
+        })
+
+        with patch(f'{base_package}.BuildStep') as buildStep:
+            buildStep.return_value = Mock()
+            buildStep.return_value.initialise = Mock()
+            built_step = models.BuildStep()
+            buildStep.return_value.initialise.return_value = built_step
+
+            build_steps = models.BuildSteps(post_build=True)
+            self.assertEqual([], build_steps.steps)
+
+            return_val = build_steps.initialise(data)
+
+            self.assertEqual(return_val, build_steps)
+            self.assertEqual([built_step], build_steps.steps)
+            buildStep.assert_called()
+            buildStep.return_value.initialise.assert_called_with(step)
+
+            with self.assertRaises(BuildConfigurationError) as e:
+                build_steps.initialise(models.BuildFileData({}))
+
+            self.assertTrue('post does not exist in BuildFileData' in e.exception.message)
+
 
 class DockerBuildTest(unittest.TestCase):
     @contextlib.contextmanager
@@ -291,7 +324,8 @@ class DockerBuildTest(unittest.TestCase):
             'custom_commands': 'custom-commands.yaml',
             'dockerfile': dockerfile,
             'files': [],
-            'steps': []
+            'steps': [],
+            'post': []
         }
         data = models.BuildFileData(data_dict)
 
@@ -310,6 +344,7 @@ class DockerBuildTest(unittest.TestCase):
             self.assertEqual(build.custom_commands, '')
             self.assertEqual(build.files, [])
             self.assertEqual(build.steps, [])
+            self.assertEqual(build.post_steps, [])
 
             return_val = build.initialise(data)
 
@@ -320,9 +355,16 @@ class DockerBuildTest(unittest.TestCase):
             self.assertEqual(build.custom_commands, 'custom-commands.yaml')
             self.assertEqual(build.files[0].path, file.path)
             self.assertEqual(build.steps[0].name, step.name)
+            self.assertEqual(build.post_steps[0].name, step.name)
 
             patched.get('files').return_value.initialise.assert_called()
             patched.get('buildSteps').return_value.initialise.assert_called()
+
+            data_dict['post'] = None
+            data = models.BuildFileData(data_dict)
+            build = models.DockerBuild()
+            build.initialise(data)
+            self.assertEqual(build.post_steps, [])
 
     def test_docker_build_errors(self):
         dockerfile = models.BuildFileData({

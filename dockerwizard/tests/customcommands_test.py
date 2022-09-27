@@ -128,32 +128,6 @@ class CustomCommandsTests(unittest.TestCase):
             patched.get('getWorkDir').assert_not_called()
             patched.get('importlib').import_module.assert_not_called()
 
-    def test_load_custom_ambiguous_module(self):
-        customcommands._LOADED_MODULES['custom'] = StubbedModule()
-
-        patched: PatchedDependencies
-        with self._patch() as patched:
-            patched.get('yaml').safe_load.return_value = test_command
-            patched.get('osPatch').path.isfile.return_value = True
-            patched.get('osPatch').path.isabs.return_value = False
-            patched.get('osPatch').path.dirname.return_value = workdir
-            patched.get('osPatch').path.basename.return_value = 'custom.py'
-            patched.get('getWorkDir').return_value = workdir
-            patched.get('sysPatch').path = []
-
-            with self.assertRaises(BuildConfigurationError) as e:
-                customcommands.load_custom('custom-commands.yaml')
-
-            self.assertTrue('conflicting' in e.exception.message)
-
-            patched.get('yaml').safe_load.assert_called()
-            patched.get('osPatch').path.isfile.assert_called()
-            patched.get('osPatch').path.isabs.assert_called()
-            patched.get('getWorkDir').assert_called()
-
-            patched.get('importlib').import_module.return_value = customcommands._LOADED_MODULES['custom']
-            customcommands.load_custom('custom-commands.yaml')  # shouldn't raise since they're the same modules
-
     def test_change_and_load_custom(self):
         patched: PatchedDependencies
         with self._patch() as patched, patch(f'{base_package}.load_custom') as custom:

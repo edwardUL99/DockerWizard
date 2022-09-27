@@ -1,15 +1,17 @@
 """
 Tests for commands in the builtincommands module
 """
+import argparse
 import contextlib
 import os
 import unittest
-from unittest.mock import MagicMock, Mock, patch
+from unittest.mock import Mock
 
+from dockerwizard.process import ExecutionResult
 from .testing import main, PatchedDependencies
-from dockerwizard import builtincommands
+from dockerwizard import builtincommands, commands
 from dockerwizard.builtincommands import CopyCommand, ExecuteSystemCommand, SetVariableCommand, \
-    SetVariablesCommand, GitCloneCommand
+    SetVariablesCommand, GitCloneCommand, ScriptExecutorCommand, CreateContainerCommand
 from dockerwizard.errors import CommandError
 
 
@@ -171,12 +173,12 @@ class SetVariableCommandTest(unittest.TestCase):
 
         with self._patch() as patched:
             self.command.execute(args)
-            self.assertTrue(name in builtincommands.environ and builtincommands.environ[name] == value)
+            self.assertTrue(name in builtincommands.os.environ and builtincommands.os.environ[name] == value)
             patched.get('info').assert_called_with(f'Setting variable {name} with value {value}')
 
             self.command.secret = True
             self.command.execute(args)
-            self.assertTrue(name in builtincommands.environ and builtincommands.environ[name] == value)
+            self.assertTrue(name in builtincommands.os.environ and builtincommands.os.environ[name] == value)
             patched.get('info').assert_called_with(f'Setting secret variable {name}')
 
             self.command.secret = False
@@ -210,7 +212,7 @@ class SetVariablesCommandTest(unittest.TestCase):
         builtincommands.environ = {}
 
         self.command.execute(args)
-        self.assertTrue(name in builtincommands.environ and builtincommands.environ[name] == value)
+        self.assertTrue(name in builtincommands.os.environ and builtincommands.os.environ[name] == value)
 
         os.environ = old_environ
 
@@ -313,11 +315,142 @@ class GitCloneCommandTest(unittest.TestCase):
         self.assertTrue('The git-clone command requires at least 1 arguments' in e.exception.message)
 
 
+class ScriptExecutorCommandTest(unittest.TestCase):
+    def __init__(self, methodName):
+        super().__init__(methodName)
+        self.command = ScriptExecutorCommand('python')
+
+    @contextlib.contextmanager
+    def _patch(self) -> PatchedDependencies:
+        with PatchedDependencies({
+            'execution': f'{base_package}.Execution',
+            'info': f'{base_package}.info'
+        }) as patched:
+            execution_returned = Mock()
+            execution_returned.execute = Mock()
+            patched.get('execution').return_value = execution_returned
+
+            yield patched
+
+    def test_initialisation(self):
+        self.assertEqual(self.command.name, 'execute-python')
+
+    def test_successful_execution(self):
+        args = ['script.py']
+        return_val = ExecutionResult(0, 'success', '')
+
+        with self._patch() as patched:
+            patched.get('execution').return_value.execute.return_value = return_val
+
+            self.command.execute(args)
+
+            patched.get('execution').assert_called_with(['python', args[0]])
+            patched.get('execution').return_value.execute.assert_called()
+            patched.get('info').assert_any_call('Command "python script.py" completed successfully with the following '
+                                                'output')
+            patched.get('info').assert_any_call('\tsuccess')
+
+    def test_failed_execution(self):
+        args = ['script.py']
+        return_val = ExecutionResult(1, '', 'failed')
+
+        with self._patch() as patched:
+            patched.get('execution').return_value.execute.return_value = return_val
+
+            with self.assertRaises(CommandError) as e:
+                self.command.execute(args)
+
+            self.assertTrue('Python interpreter failed with stderr: failed and exit code: 1' in e.exception.message)
+
+            patched.get('execution').assert_called_with(['python', args[0]])
+            patched.get('execution').return_value.execute.assert_called()
+
+    def test_invalid_args(self):
+        args = []
+
+        with self.assertRaises(CommandError) as e:
+            self.command.execute(args)
+
+        self.assertTrue('requires at least 1 arguments' in e.exception.message)
+
+    def test_no_script_provided(self):
+        args = ['-u']
+
+        with self.assertRaises(CommandError) as e:
+            self.command.execute(args)
+
+        self.assertTrue('needs the name of a .py script' in e.exception.message)
+
+
+class CreateContainerCommandTest(unittest.TestCase):
+    def __init__(self, methodName):
+        super().__init__(methodName)
+        self.command = CreateContainerCommand()
+
+    @contextlib.contextmanager
+    def _patch(self) -> PatchedDependencies:
+        with PatchedDependencies({
+            'docker': f'{base_package}.DockerClient',
+            'info': f'{base_package}.info'
+        }) as patched:
+            patched.get('docker').create_docker_container = Mock()
+            yield patched
+
+    def test_initialisation(self):
+        self.assertEqual(self.command.name, 'create-container')
+
+    def test_successful_execution_minimal_args(self):
+        args = ['test-container', 'test-image']
+        result = ExecutionResult(0, 'hash', '')
+
+        with self._patch() as patched:
+            patched.get('docker').create_docker_container.return_value = result
+            self.command.execute(args)
+
+            patched.get('docker').create_docker_container.assert_called_with('test-image', 'test-container', [])
+            patched.get('info').assert_called_with('Container test-container created successfully from image '
+                                                   'test-image with hash hash')
+
+    def test_successful_execution_supplemental_args(self):
+        args = ['test-container', 'test-image', '-p', '8080:8080', '--network=host']
+        result = ExecutionResult(0, 'hash', '')
+
+        with self._patch() as patched:
+            patched.get('docker').create_docker_container.return_value = result
+            self.command.execute(args)
+
+            patched.get('docker').create_docker_container.assert_called_with('test-image', 'test-container',
+                                                                             ['-p', '8080:8080', '--network=host'])
+            patched.get('info').assert_called_with('Container test-container created successfully from image '
+                                                   'test-image with hash hash')
+
+    def test_failed_execution(self):
+        args = ['test-container', 'test-image']
+        result = ExecutionResult(1, '', 'failed')
+
+        with self._patch() as patched:
+            patched.get('docker').create_docker_container.return_value = result
+
+            with self.assertRaises(CommandError) as e:
+                self.command.execute(args)
+
+            self.assertTrue('Failed to create Docker container test-container from image '
+                            'test-image with error: failed and exit code: 1' == e.exception.message)
+            patched.get('docker').create_docker_container.assert_called_with('test-image', 'test-container', [])
+
+    def test_invalid_args(self):
+        args = []
+
+        with self.assertRaises(CommandError) as e:
+            self.command.execute(args)
+
+        self.assertTrue('requires at least 2 arguments' in e.exception.message)
+
+
 class RegisterBuiltinTest(unittest.TestCase):
     @classmethod
     def setUpClass(cls) -> None:
-        types = {}
-        types
+        commands.registry = commands.CommandRegistry()
 
     @contextlib.contextmanager
     def _patch(self) -> PatchedDependencies:
@@ -326,7 +459,9 @@ class RegisterBuiltinTest(unittest.TestCase):
             'execute': f'{base_package}.ExecuteSystemCommand',
             'setVar': f'{base_package}.SetVariableCommand',
             'setVars': f'{base_package}.SetVariablesCommand',
-            'gitClone': f'{base_package}.GitCloneCommand'
+            'gitClone': f'{base_package}.GitCloneCommand',
+            'scriptExecutor': f'{base_package}.ScriptExecutorCommand',
+            'createContainer': f'{base_package}.CreateContainerCommand'
         }) as patched:
             yield patched
 
@@ -341,6 +476,44 @@ class RegisterBuiltinTest(unittest.TestCase):
             patched.setVar.assert_any_call(False)
             patched.setVars.assert_called()
             patched.gitClone.assert_called()
+            patched.scriptExecutor.assert_any_call('python')
+            patched.scriptExecutor.assert_any_call('groovy')
+            patched.createContainer.assert_called()
+
+
+class BuiltinHelpTest(unittest.TestCase):
+    """
+    A very simple test case just to verify that all builtin commands implement the print_help method without throwing errors
+    """
+    @contextlib.contextmanager
+    def _patch(self) -> PatchedDependencies:
+        with PatchedDependencies({
+            'info': f'{base_package}.info',
+            'print_help': f'{base_package}.print_builtins_help'
+        }) as patched:
+            yield patched
+
+    def test_commands_help(self):
+        # save function ref before patching
+        builtins_help = builtincommands.print_builtins_help
+
+        with self._patch() as patched:
+            old_commands_registry = commands.registry
+            builtins_help()
+            commands_registry = commands.registry
+
+            self.assertNotEqual(old_commands_registry, commands_registry)
+            patched.get('info').assert_called()
+
+    def test_builtins_help_action(self):
+        parser = Mock()
+        parser.exit = Mock()
+        action = builtincommands.BuiltinsHelpAction([''], '')
+
+        with self._patch() as patched:
+            action(parser, argparse.Namespace(), [''])
+            patched.get('print_help').assert_called()
+            parser.exit.assert_called()
 
 
 if __name__ == '__main__':

@@ -3,6 +3,7 @@ Provides the library for integration test verifications
 """
 import os
 from os import environ
+import platform
 from unittest import main as _ut_main, TestCase
 
 import yaml
@@ -40,6 +41,15 @@ class PostVerificationTestCase(TestCase):
                 return yaml.safe_load(f)
         else:
             return None
+
+    def verify_env_variable(self, env_variables, key, expected):
+        """
+        Reads from given environment variables and asserts that the value with key equals expected
+        """
+        if platform.system() == 'Windows':
+            key = key.upper()
+
+        self.assertEqual(env_variables[key], expected)
 
 
 def main():

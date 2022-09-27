@@ -48,3 +48,10 @@ build:
         - 'ls'
         - '-al'
     # after steps complete, the framework will run docker build
+  post:
+    # optional steps to run after successful docker build
+    - name: 'Create a container from the built image'
+      command: 'create-container'
+      arguments:
+        - 'hello-world'
+        - 'hello-world-docker-build'

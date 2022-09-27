@@ -105,6 +105,23 @@ class ArgparserTest(unittest.TestCase):
 
         self.assertEqual(0, e.exception.code)
 
+    def test_builtins_argument(self):
+        args = ['docker-wizard.py', '-b']
+        sys.argv = args
+
+        with self.assertRaises(SystemExit) as e:
+            argparser.parse()
+
+        self.assertEqual(0, e.exception.code)
+
+        args = ['docker-wizard.py', '--builtins']
+        sys.argv = args
+
+        with self.assertRaises(SystemExit) as e:
+            argparser.parse()
+
+        self.assertEqual(0, e.exception.code)
+
 
 if __name__ == '__main__':
     main()

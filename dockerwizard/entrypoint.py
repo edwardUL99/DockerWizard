@@ -12,6 +12,7 @@ from .builder import Builder
 from .buildparser import get_build_parser
 from .customcommands import load_custom, custom_command_path_validator
 from .system import initialise_system, docker_wizard_home
+from .errors import BuildConfigurationError
 
 
 def _validate_file(file):
@@ -61,24 +62,53 @@ def _docker_wizard_home():
     return var
 
 
+def _find_custom_command_path(args_path: str, workdir: str, home_path: str):
+    """
+    Finds custom commands path in the order:
+    args_path - path passed in with -c arg
+    workdir - relative to working directory
+    home_path - looks for custom command file in docker wizard home
+    """
+    paths = [
+        args_path,
+        os.path.join(workdir, CUSTOM_COMMANDS),
+        os.path.join(home_path, CUSTOM_COMMANDS)
+    ]
+
+    for i, path in enumerate(paths):
+        if path and os.path.isfile(path):
+            return path
+        elif i == 0 and args_path is not None:
+            raise BuildConfigurationError(f'Custom commands file {args_path} not found')
+
+    return None
+
+
 def _load_custom_commands(custom_command_path: str):
     """
     Loads the custom commands if such a definition file exists
     :param custom_command_path: the path to the custom commands definition file
     :return: None
     """
-    provided = custom_command_path is not None
-    custom_command_path = custom_command_path if provided else \
-        os.path.join(docker_wizard_home(), CUSTOM_COMMANDS)
-    validation_error = custom_command_path_validator(custom_command_path)
+    if custom_command_path and not os.path.isabs(custom_command_path):
+        custom_command_path = os.path.join(get_working_directory(), custom_command_path)
 
-    if not validation_error:
-        change_directory(os.path.dirname(custom_command_path))
-        load_custom(os.path.basename(custom_command_path))
-        change_back()
-    elif provided:
-        cli.error(validation_error)
+    try:
+        custom_command_path = _find_custom_command_path(custom_command_path, get_working_directory(), _docker_wizard_home())
+    except BuildConfigurationError as e:
+        cli.error(e.message)
         sys.exit(1)
+
+    if custom_command_path is not None:
+        validation_error = custom_command_path_validator(custom_command_path)
+
+        if not validation_error:
+            change_directory(os.path.dirname(custom_command_path))
+            load_custom(os.path.basename(custom_command_path))
+            change_back()
+        else:
+            cli.error(validation_error)
+            sys.exit(1)
 
 
 def main():
@@ -89,12 +119,13 @@ def main():
     initialise_system()
 
     args = parse()
-    # change directory as custom commands and other system initialisations are done relative to docker builder home
-    change_directory(_docker_wizard_home())
-    _load_custom_commands(args.custom)
-    change_back()  # now change back to where script was called from
+
+    custom_command_path = args.custom
+    if custom_command_path and not os.path.isabs(custom_command_path):
+        custom_command_path = os.path.join(get_working_directory(), custom_command_path)
 
     _change_working_dir(args.workdir)
+    _load_custom_commands(custom_command_path)
     file = _validate_file(args.file)
 
     parser = get_build_parser()

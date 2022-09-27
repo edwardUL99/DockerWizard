@@ -1,0 +1,27 @@
+# Write your integration test build file here. See the build.yaml file in /home/eddy/Coding/Python/DockerWizard/dockerwizard/tests/integration/../example_integration for a sample
+build:
+  image: 'image'
+  dockerfile:
+    path: 'Dockerfile'
+  library: '.'
+  files:
+    - path: 'script.groovy'
+    - path: 'script.py'
+  steps:
+    - name: 'Execute Groovy script'
+      command: 'execute-groovy'
+      arguments:
+        - 'script.groovy'
+    - name: 'Execute Python script'
+      command: 'execute-python'
+      arguments:
+        - 'script.py'
+  # after steps complete, the framework will run docker build
+  post:
+    - name: 'Create Docker container'
+      command: 'create-container'
+      arguments:
+        - 'test-container'
+        - 'image'
+        - '-p'
+        - '8080:8080'

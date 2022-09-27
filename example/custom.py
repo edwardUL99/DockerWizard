@@ -8,9 +8,9 @@ if project_home not in path:
     path.append(project_home)
 
 # custom commands should extend this abstract command
-from dockerwizard.commands import AbstractCommand
+from dockerwizard import AbstractCommand
 # any command errors should be raised as an instance of CommandError
-from dockerwizard.errors import CommandError
+from dockerwizard import CommandError
 from dockerwizard import cli
 
 

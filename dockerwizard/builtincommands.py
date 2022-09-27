@@ -1,19 +1,35 @@
 """
 This module holds all the builtin commands
 """
+import argparse
 import os
-from os import environ
+import re
 import shutil
+from abc import ABC, abstractmethod
 
-from .commands import AbstractCommand
+from . import commands
+from .commands import AbstractCommand, CommandRegistry
+from .docker import DockerClient
 from .errors import CommandError
-from .process import Execution
+from .process import Execution, ExecutionResult
 from .cli import info, warn
 from .system import isWindows
 from .const import DOCKER_WIZARD_BASH_PATH
 
 
-class CopyCommand(AbstractCommand):
+class BuiltinCommand(ABC):
+    """
+    A base class for any builtin commands
+    """
+    @abstractmethod
+    def print_help(self):
+        """
+        Print the help for this command
+        """
+        pass
+
+
+class CopyCommand(AbstractCommand, BuiltinCommand):
     """
     A command for copying files
     """
@@ -40,8 +56,46 @@ class CopyCommand(AbstractCommand):
     def default_name(self):
         return 'Copy Files'
 
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Copies a source file to a destination relative to build directory')
+        info('\tArguments: 2 arguments')
+        info('\t\t1. Source file')
+        info('\t\t2. Destination')
 
-class ExecuteSystemCommand(AbstractCommand):
+
+class _GenericOutputHandler:
+    """
+    A handler for common generic command output handling
+    """
+    @staticmethod
+    def handle_output(execution: ExecutionResult, args: list, command_tag: str = 'System command'):
+        """
+        Handle the output of the provided execution with the args that were passed into the execution
+        """
+        if not execution.is_healthy():
+            raise CommandError(f'{command_tag} failed with stderr: {execution.stderr} and exit code:'
+                               f' {execution.exit_code}')
+        else:
+            if execution.stdout == '' and execution.stderr != '':
+                warn('Execution standard output is empty but stderr is not with 0 exit code. '
+                     'This is confusing and should be avoided')
+                split = execution.stderr.splitlines()
+            else:
+                split = execution.stdout.splitlines()
+
+            joined = ' '.join(args)
+
+            if len(split) == 0:
+                info(f'Command "{joined}" completed successfully with no output')
+            else:
+                info(f'Command "{joined}" completed successfully with the following output')
+
+                for line in split:
+                    info(f'\t{line}')
+
+
+class ExecuteSystemCommand(AbstractCommand, BuiltinCommand):
     """
     A command that executes a command on the host system shell
     """
@@ -76,32 +130,21 @@ class ExecuteSystemCommand(AbstractCommand):
             # restore color after executing bash as it can reset the colors
             os.system('color')
 
-        if not execution.is_healthy():
-            raise CommandError(f'System command failed with stderr: {execution.stderr} and exit code:'
-                               f' {execution.exit_code}')
-        else:
-            if execution.stdout == '' and execution.stderr != '':
-                warn('Execution standard output is empty but stderr is not with 0 exit code. '
-                     'This is confusing and should be avoided')
-                split = execution.stderr.splitlines()
-            else:
-                split = execution.stdout.splitlines()
-
-            joined = ' '.join(args)
-
-            if len(split) == 0:
-                info(f'Command {joined} completed successfully with no output')
-            else:
-                info(f'Command {joined} completed successfully with the following output')
-
-                for line in split:
-                    info(f'\t{line}')
+        _GenericOutputHandler.handle_output(execution, args)
 
     def default_name(self):
         return 'Execute System Command'
 
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Executes a system command using the system shell (bash or cmd, e.g.')
+        info('\tArguments: 1 or more arguments which are joined together and passed to the shell')
+        info('\tIf the first argument is bash and the OS is windows, it will be resolved to a Bash Emulator')
+        info('\tA path to a Bash emulator can be set using the DOCKER_WIZARD_BASH_PATH environment variable. If you '
+             'have WSL installed, this is not required as bash is available with it')
 
-class SetVariableCommand(AbstractCommand):
+
+class SetVariableCommand(AbstractCommand, BuiltinCommand):
     """
     A command that allows you to set an environment variable
     """
@@ -110,7 +153,7 @@ class SetVariableCommand(AbstractCommand):
         super().__init__('set-secret' if secret else 'set-variable', 2)
 
     def _execute(self, args: list):
-        self._do_set(args[0], args[1], environ)
+        self._do_set(args[0], args[1], os.environ)
 
     def _do_set(self, name: str, value: str, environs):
         if self.secret:
@@ -123,8 +166,19 @@ class SetVariableCommand(AbstractCommand):
     def default_name(self):
         return 'Set Variable'
 
+    def print_help(self):
+        info(f'Command: {self.name}')
+        if self.secret:
+            info('Sets an environment variable with provided value, however does not log the value to console since '
+                 'the value is treated as a secret')
+        else:
+            info('Sets an environment variable with provided value, logging it to the console')
+        info('\tArguments: 2 arguments')
+        info('\t\t1. Name of the variable')
+        info('\t\t2. Value')
 
-class SetVariablesCommand(AbstractCommand):
+
+class SetVariablesCommand(AbstractCommand, BuiltinCommand):
     """
     Allows the setting of multiple variables in one step by specifying a list of name=value pairs
     """
@@ -145,10 +199,15 @@ class SetVariablesCommand(AbstractCommand):
                 if len(name.split(' ')) > 1:
                     raise CommandError('Names of variables cannot contain spaces')
                 else:
-                    environ[name] = value
+                    os.environ[name] = value
+
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Provides the ability to set multiple environment variables by supplying key=value pairs')
+        info('\tArguments: 1 or more arguments')
 
 
-class GitCloneCommand(AbstractCommand):
+class GitCloneCommand(AbstractCommand, BuiltinCommand):
     """
     A command that allows a git repository to be cloned
     """
@@ -179,6 +238,96 @@ class GitCloneCommand(AbstractCommand):
     def default_name(self):
         return 'Git Clone'
 
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Clones a git repository into the build directory')
+        info('\tArguments: At least 1 argument, with optional 2nd argument')
+        info('\t\t1. URL of git repository')
+        info('\t\t2. Optional name of target directory to clone into')
+
+
+class ScriptExecutorCommand(AbstractCommand, BuiltinCommand):
+    """
+    A command that can execute specified scripts
+    """
+
+    _EXTENSION_MAP = {
+        'python': 'py',
+        'groovy': 'groovy'
+    }
+
+    def __init__(self, interpreter: str):
+        super().__init__(f'execute-{interpreter}', 1, at_least=True)
+        self._interpreter = interpreter
+
+    def _verify_script_passed(self, process_args: list):
+        # verify that a script is passed into the command and now executing as interactive (e.g. just calling python)
+        extension = ScriptExecutorCommand._EXTENSION_MAP.get(self._interpreter, self._interpreter)
+        pattern = f'^(.+)\\.{extension}$'
+
+        for arg in process_args:
+            if re.match(pattern, arg):
+                return
+
+        # not found
+        raise CommandError(f'The {self.name} command needs the name of a .{extension} script to be passed in')
+
+    def _interpreter_capitalised(self):
+        return f'{self._interpreter[:1].upper()}{self._interpreter[1:]}'
+
+    def _execute(self, args: list):
+        process_args = [self._interpreter]
+        process_args.extend(args)
+        self._verify_script_passed(process_args)
+
+        execution = Execution(process_args).execute()
+
+        _GenericOutputHandler.handle_output(execution, process_args, f'{self._interpreter_capitalised()} interpreter')
+
+    def default_name(self):
+        return f'Execute {self._interpreter_capitalised()} script'
+
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info(f'Executes a {self._interpreter} script')
+        info(f'\tArguments: 1 or more arguments where one of the arguments must be a {self._interpreter} script file '
+             f'ending in .{ScriptExecutorCommand._EXTENSION_MAP[self._interpreter]}. The rest of the arguments '
+             f'can be flags passed to the {self._interpreter} interpreter')
+
+
+class CreateContainerCommand(AbstractCommand, BuiltinCommand):
+    """
+    A command to create a container. Most useful as a post build step
+    Args 0 is the name and 1 is the image (can have the command to run too in the same string).
+    Extra args are arguments supported by docker build
+    """
+    def __init__(self):
+        super().__init__('create-container', 2, at_least=True)
+
+    def _execute(self, args: list):
+        name = args[0]
+        image = args[1]
+        extra = args[2:] if len(args) > 2 else []
+        execution = DockerClient.create_docker_container(image, name, extra)
+
+        if execution.is_healthy():
+            info(f'Container {name} created successfully from image {image} with hash {execution.stdout.strip()}')
+        else:
+            raise CommandError(f'Failed to create Docker container {name} from image {image} with error: '
+                               f'{execution.stderr} and exit code: {execution.exit_code}')
+
+    def default_name(self):
+        return 'Create Docker Container'
+
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Create a Docker container. Always creates containers in detached mode (-d)')
+        info('\tArguments: 2 or more arguments can be provided but the order must match the following')
+        info('\t\t1. The name of the container to create')
+        info('\t\t2. The tag/image of the container to run. Any command to execute in the created container can be'
+             ' passed into this')
+        info('\t\tOptional extra arguments like -p, --network etc. to pass to the docker run command')
+
 
 def register_builtins():
     """
@@ -188,6 +337,35 @@ def register_builtins():
     # commands that are already instantiated like below are left out of below list
     SetVariableCommand(False)
     SetVariableCommand(True)
+    ScriptExecutorCommand('groovy')
+    ScriptExecutorCommand('python')
 
-    for command in [CopyCommand, ExecuteSystemCommand, SetVariablesCommand, GitCloneCommand]:
+    for command in [CopyCommand, ExecuteSystemCommand, SetVariablesCommand, GitCloneCommand, CreateContainerCommand]:
         command()
+
+
+def print_builtins_help():
+    """
+    Print the help of all builtin commands
+    """
+    commands.registry = CommandRegistry()
+    register_builtins()
+    info('The following are all the commands that are built-in to DockerWizard. The command tag, description and '
+         'arguments information is offered')
+
+    for value in commands.registry.commands.values():
+        if isinstance(value, BuiltinCommand):
+            value.print_help()
+            info()
+
+
+class BuiltinsHelpAction(argparse.Action):
+    """
+    An action to print builtin commands help and exit
+    """
+    def __init__(self, option_strings, dest, **kwargs):
+        super().__init__(option_strings, dest, nargs=0, **kwargs)
+
+    def __call__(self, parser, namespace, values, option_string=None):
+        print_builtins_help()
+        parser.exit()

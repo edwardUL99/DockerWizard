@@ -11,10 +11,6 @@ from .errors import BuildConfigurationError
 from .workdir import get_working_directory, change_directory, change_back
 
 
-# keeps track of loaded modules
-_LOADED_MODULES: dict = {}
-
-
 def _load_module(path: str):
     """
     Loads the module from the given path by using the directory of the path as the module (adding the directory path
@@ -35,18 +31,11 @@ def _load_module(path: str):
 
         loaded_module = importlib.import_module(module)
 
-        if module in _LOADED_MODULES and _LOADED_MODULES[module] is not loaded_module:
-            raise BuildConfigurationError(f'Custom commands module {module} from '
-                                          f'{os.path.join(module_dir, module_file)} is conflicting with an existing'
-                                          ' module of the same name')
-
-        _LOADED_MODULES[module] = loaded_module
-
         if inserted:
             # we had to insert the module path ourselves, so remove it to avoid conflicts with modules of the same name
             sys.path.pop(0)
 
-        return loaded_module
+        return loaded_module, module
     else:
         raise BuildConfigurationError(f'Custom command file {path} is either not a file or Python (.py) file')
 
@@ -58,7 +47,7 @@ def _load_custom(command: dict):
     path = command['file']
     class_name = command['class']
 
-    module = _load_module(path)
+    module, name = _load_module(path)
 
     try:
         class_def = getattr(module, class_name)
@@ -69,6 +58,8 @@ def _load_custom(command: dict):
             raise BuildConfigurationError(f'Command {class_name} from {path} does not extend AbstractCommand')
     except AttributeError:
         raise BuildConfigurationError(f'Class {class_name} does not exist within {path}')
+    finally:
+        del sys.modules[name]
 
 
 def load_custom(commands_file: str):

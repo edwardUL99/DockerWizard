@@ -27,9 +27,9 @@ class MockProgramGenerationProgram(IntegrationProgram):
         parser.add_argument('-o', '--outputs', required=False, default=None,
                             help='Specify hard coded defaults if environment variable for outputs are not set which are'
                                  ' hard coded into the generated file. The format should match that in a spec file')
-        parser.add_argument('-t', '--test', help='The name of the integration test (integration tests are stored under '
-                                                 'docker_wizard_home/dockerwizard/tests with names in the format '
-                                                 '<name>_integration')
+        parser.add_argument('-t', '--test', required=True, help='The name of the integration test (integration tests '
+                                                                'are stored under docker_wizard_home/dockerwizard/tests'
+                                                                ' with names in the format <name>_integration')
         parser.add_argument('name', help='The name of the output file')
 
     @staticmethod

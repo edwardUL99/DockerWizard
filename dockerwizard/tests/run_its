@@ -1,7 +1,15 @@
 #!/usr/bin/env bash
 
+previous="$PWD"
+
 directory=$(dirname "$0")
 
 cd "$directory"
 
 integration/itutils run "*_integration" -g
+
+exit_code="$?"
+
+cd "$previous"
+
+exit "$exit_code"

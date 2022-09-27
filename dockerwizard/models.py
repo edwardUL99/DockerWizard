@@ -122,7 +122,7 @@ class BaseFileObject(BuildFileObject):
     """
     A base build file object which provides the recommended implementation of initialise which returns self
     """
-    def __init__(self, tag_name: str=None):
+    def __init__(self, tag_name: str = None):
         super().__init__(tag_name=tag_name)
 
     def initialise(self, data: BuildFileData):
@@ -204,15 +204,17 @@ class BuildSteps(BaseFileObject):
     """
     Represents the build steps of a build file
     """
-    def __init__(self):
-        super().__init__('steps')
+    def __init__(self, post_build: bool = False):
+        super().__init__('steps' if not post_build else 'post')
         self.steps: List[BuildStep] = []
+        self._post = post_build
 
     def do_initialise(self, data: BuildFileData):
-        steps_list = data.get_property('steps')
+        key = 'steps' if not self._post else 'post'
+        steps_list = data.get_property('steps' if not self._post else 'post')
 
         if steps_list is None:
-            raise BuildConfigurationError('Attempted to initialise steps but steps does not exist in BuildFileData')
+            raise BuildConfigurationError(f'Attempted to initialise {key} but {key} does not exist in BuildFileData')
 
         self.steps = [BuildStep().initialise(s) for s in steps_list]
 
@@ -229,6 +231,7 @@ class DockerBuild(BaseFileObject):
         self.custom_commands: str = ''
         self.files: List[File] = []
         self.steps: List[BuildStep] = []
+        self.post_steps: List[BuildStep] = []
 
     def _convert_custom_commands(self):
         if self.custom_commands:
@@ -264,6 +267,12 @@ class DockerBuild(BaseFileObject):
         steps_data = BuildFileData({
             'steps': data.get_property('steps')
         })
+        post_steps_data = BuildFileData({
+            'post': data.get_property('post')
+        })
 
         self.files = Files().initialise(files_data).files
         self.steps = BuildSteps().initialise(steps_data).steps
+
+        if post_steps_data.get_property('post') is not None:
+            self.post_steps = BuildSteps(post_build=True).initialise(post_steps_data).steps

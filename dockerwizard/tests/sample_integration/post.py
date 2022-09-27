@@ -12,17 +12,18 @@ class PostVerifyScript(it.PostVerificationTestCase):
         self.assertIsNotNone(self.stdout)
         self.assertTrue(self.stderr == '')
         self.assertEqual(0, self.exit_code)
-
-        with open('expected_output.txt', 'r') as f:
-            self.assertEqual(f.read(), self.stdout)
+        self.assertTrue('set messages' in self.stdout)
+        self.assertTrue('ls output' in self.stdout)
+        self.assertTrue('image built' in self.stdout)
+        self.assertTrue('BUILD SUCCEEDED' in self.stdout)
 
     def test_environment_variables(self):
         environ = self.read_program_envs('docker')
 
         self.assertIsNotNone(environ)
         self.assertEqual(environ['MESSAGE'], 'Hello World from the sample DockerBuild build file')
-        self.assertEqual(environ['key1'], 'this is a value')
-        self.assertEqual(environ['key2'], 'this is another value')
+        self.verify_env_variable(environ, 'key1', 'this is a value')
+        self.verify_env_variable(environ, 'key2', 'this is another value')
 
 
 if __name__ == '__main__':

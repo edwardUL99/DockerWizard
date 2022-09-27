@@ -5,6 +5,7 @@ from typing import List
 from abc import ABC, abstractmethod
 import argparse
 
+from .builtincommands import BuiltinsHelpAction
 from .const import DOCKER_WIZARD_CMD_NAME
 from .workdir import get_working_directory
 from .versioning import VersionAction
@@ -122,7 +123,10 @@ ARGUMENTS: List[Argument] = [
                                                               'found in the project root directory',
                  default=None, required=False),
     FlagArgument(name='-v', long_name='--version', description='Print the version of the tool and immediately exit',
-                 required=False, action=VersionAction)
+                 required=False, action=VersionAction),
+    FlagArgument(name='-b', long_name='--builtins', description='Print help information of all builtin commands and '
+                                                                'immediately exit',
+                 required=False, action=BuiltinsHelpAction)
 ]
 
 

@@ -35,7 +35,9 @@ def _create_message(color: str, message: str, level: str) -> str:
     :param level: the log level
     :return: the created message
     """
-    return f'[{color}{level}{_RESET}] {message}'
+    header = f'[{color}{level}{_RESET}]'
+    message = '' if message is None else f' {message}'
+    return f'{header}{message}'
 
 
 def _print(msg: str, use_stderr: bool = False):
@@ -49,7 +51,7 @@ def _print(msg: str, use_stderr: bool = False):
             print(msg, file=sys.stderr)
 
 
-def info(message: str):
+def info(message: str = None):
     """
     Print an info message
     :param message: the info message to print

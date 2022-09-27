@@ -4,16 +4,13 @@ This module holds the classes required for building the docker images
 import shutil
 import os
 
+from .docker import DockerClient
 from .models import DockerBuild, File, BuildStep
 from .workdir import create_temp_directory, change_directory, change_back
 from .cli import info, error
 from .commands import registry
 from .customcommands import change_and_load_custom
-from .builtincommands import register_builtins
 from .errors import CommandError, BuildFailedError, BuildConfigurationError
-from .process import Execution
-
-register_builtins()
 
 
 class Builder:
@@ -62,7 +59,7 @@ class Builder:
         info('Dockerfile and required files successfully copied to build directory')
 
     @staticmethod
-    def _execute_step(index: int, step: BuildStep):
+    def _execute_step(index: int, step: BuildStep, post_step: bool = False):
         """
         Execute the build step
         :param index: the index of this step
@@ -77,7 +74,8 @@ class Builder:
             try:
                 command_implementation = registry.get_command(command)
                 name = name if name else command_implementation.default_name()
-                info(f'Executing build step {index} - {name}')
+                step_type = 'build' if not post_step else 'post-build'
+                info(f'Executing {step_type} step {index} - {name}')
 
                 command_implementation.execute(args)
             except ValueError:
@@ -87,15 +85,16 @@ class Builder:
             error(f'Failed to execute build step {index} - {step.name} with error: {e.message}')
             raise BuildFailedError()
 
-    def _execute_steps(self):
+    def _execute_steps(self, post_steps: bool = False):
         """
-        Execute the build steps
+        Execute the build or post-build steps
+        :param post_steps: if true, execute post steps if any
         :return: None
         """
-        info('Executing build steps')
+        info('Executing build steps' if not post_steps else 'Executing post-build steps')
 
-        for i, val in enumerate(self.config.steps):
-            self._execute_step(i + 1, val)
+        for i, val in enumerate(self.config.steps if not post_steps else self.config.post_steps):
+            self._execute_step(i + 1, val, post_steps)
             change_directory(self._working_directory.name, not_store=True)
 
     def _build_docker_image(self):
@@ -103,9 +102,9 @@ class Builder:
         Builds the docker image after successful completion of steps
         :return: None
         """
+        info()
         info(f'Building Docker image with tag {self.config.image}')
-        args = ['docker', 'build', '--tag', self.config.image, '.']
-        execution = Execution(args).execute()
+        execution = DockerClient.build_docker_image(self.config.image)
 
         if not execution.is_healthy():
             error(f'Failed to build Docker image with error {execution.stderr} and exit code {execution.exit_code}')
@@ -116,6 +115,8 @@ class Builder:
 
             for line in split:
                 info(f'\t{line}')
+
+        info()
 
     def _clean_build_directory(self):
         """
@@ -128,7 +129,7 @@ class Builder:
 
     def _setup_custom_commands(self):
         """
-        If the build specifies its own custom commands the, they are added to the existing ones
+        If the build specifies its own custom commands file, they are added to the existing ones
         """
         if self.config.custom_commands:
             info(f'Build specified custom commands file {self.config.custom_commands}. Loading commands into build')
@@ -150,6 +151,7 @@ class Builder:
 
             self._execute_steps()
             self._build_docker_image()
+            self._execute_steps(post_steps=True)
 
             info('Build finished, changing back to working directory')
             info('BUILD SUCCEEDED')
