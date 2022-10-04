@@ -8,6 +8,7 @@ from .system import register_system_initialisation, SystemInitialisation, OSType
 from .const import DOCKER_WIZARD_TESTING_NAME
 
 register_system_initialisation(SystemInitialisation(OSTypes.WINDOWS, lambda: os.system('color')))
+register_system_initialisation(SystemInitialisation(OSTypes.ALL, lambda: _set_disable_color()))
 
 __all__ = ['info', 'warn', 'error']
 
@@ -21,6 +22,14 @@ _WARN = 'WARNING'
 _ERROR = 'ERROR'
 
 _DISABLED = False
+_DISABLE_COLOR = False
+_DISABLE_COLOR_VAR = 'DOCKER_WIZARD_DISABLE_COLOR'
+
+
+def _set_disable_color():
+    global _DISABLE_COLOR
+    if os.environ.get(_DISABLE_COLOR_VAR) is not None:
+        _DISABLE_COLOR = True
 
 
 def _disabled():
@@ -35,7 +44,7 @@ def _create_message(color: str, message: str, level: str) -> str:
     :param level: the log level
     :return: the created message
     """
-    header = f'[{color}{level}{_RESET}]'
+    header = f'[{color}{level}{_RESET}]' if not _DISABLE_COLOR else f'[{level}]'
     message = '' if message is None else f' {message}'
     return f'{header}{message}'
 

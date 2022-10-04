@@ -18,7 +18,7 @@ from dockerwizard import builder
 old_temp_dir = builder.create_temp_directory
 builder.create_temp_directory = Mock()
 
-from dockerwizard import models
+from dockerwizard import models, context
 
 base_package = 'dockerwizard.builder'
 
@@ -78,6 +78,17 @@ class StubCommand:
         return 'name'
 
 
+class StubContext(context.BuildContext):
+    def __init__(self):
+        super().__init__()
+        self.current_step_set = False
+
+    @context.BuildContext.current_step.setter
+    def current_step(self, current_step: models.BuildStep):
+        self._current_step = current_step
+        self.current_step_set = True
+
+
 class BuilderTest(unittest.TestCase):
     def __init__(self, methodName):
         super().__init__(methodName)
@@ -91,7 +102,7 @@ class BuilderTest(unittest.TestCase):
         builtincommands.register_builtins = old_register_builtins
         builder.create_temp_directory = old_temp_dir
 
-    def setUp(self) -> None:
+    def _create_builder(self):
         config = models.DockerBuild()
         config.image = image
         config.dockerfile = dockerfile
@@ -104,6 +115,8 @@ class BuilderTest(unittest.TestCase):
         builder.create_temp_directory.return_value = StubTempDir()
         self.builder = builder.Builder(config)
 
+    def setUp(self) -> None:
+        self._create_builder()
         self.test1_command = StubCommand()
         self.test2_command = StubCommand()
         self.test3_command = StubCommand()
@@ -119,7 +132,9 @@ class BuilderTest(unittest.TestCase):
             'error': f'{base_package}.error',
             'registry': f'{base_package}.registry',
             'changeLoadCustom': f'{base_package}.change_and_load_custom',
-            'docker': f'{base_package}.DockerClient'
+            'docker': f'{base_package}.DockerClient',
+            'context_init': f'{base_package}.initialise',
+            'context_teardown': f'{base_package}.teardown'
         }) as patched:
             patched.osPatch.path = patch_os_path()
             patched.shutil.copy = Mock()
@@ -194,7 +209,6 @@ class BuilderTest(unittest.TestCase):
             patched.info.assert_any_call('Executing post-build steps')
             patched.info.assert_any_call(f'Executing post-build step 1 - {step3.name}')
             patched.info.assert_any_call('Build finished, changing back to working directory')
-            patched.info.assert_any_call('BUILD SUCCEEDED')
 
     def test_successful_build_without_custom_commands(self):
         docker_build = ExecutionResult(0, 'stdout', '')
@@ -237,7 +251,6 @@ class BuilderTest(unittest.TestCase):
             self.assertFalse(return_val)
             patched.error.assert_any_call(f'Failed to execute build step 1 - {step1.name} with error: error')
             patched.error.assert_any_call('See logs to see why the build failed')
-            patched.error.assert_any_call('BUILD FAILED')
 
     def test_failed_build_docker_error(self):
         failed_docker = ExecutionResult(1, '', 'error')
@@ -251,7 +264,22 @@ class BuilderTest(unittest.TestCase):
             patched.error.assert_any_call('Failed to build Docker image with error error and '
                                           'exit code 1')
             patched.error.assert_any_call('See logs to see why the build failed')
-            patched.error.assert_any_call('BUILD FAILED')
+
+    def test_context_setup(self):
+        mock_context = StubContext()
+        docker_build = ExecutionResult(0, 'stdout', '')
+
+        patched: PatchedDependencies
+        with self._patch() as patched:
+            patched.get('context_init').return_value = mock_context
+            self._create_builder()
+            patched.docker.build_docker_image.return_value = docker_build
+
+            self.builder.build()
+
+            self.assertEqual(self.builder.config, mock_context.config)
+            self.assertTrue(mock_context.current_step_set)
+            patched.get('context_teardown').assert_called()
 
 
 if __name__ == '__main__':

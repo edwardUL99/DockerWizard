@@ -118,6 +118,15 @@ class AbstractCommand(Command, ABC):
         if error:
             raise CommandError(msg)
 
+    @property
+    def build_context(self):
+        """
+        Returns the current build context. Should be called only in _execute since that is called during build time.
+        init is called before a context is available
+        """
+        from .context import BuildContext  # prevent circular import
+        return BuildContext.context()
+
     def execute(self, args: list):
         """
         Executes, validating the number of args passed in and then calls the _execute hook

@@ -17,6 +17,13 @@ class BuildFileData:
     def __init__(self, data: dict):
         self._data = data
 
+    @property
+    def data(self) -> dict:
+        """
+        Returns raw data dictionary as a copy
+        """
+        return self._data.copy()
+
     def get_property(self, key: str):
         return self._data.get(key)
 
@@ -189,15 +196,22 @@ class BuildStep(BaseFileObject):
         self.name = None
         self.command: str = ''
         self.arguments: list = []
+        # additional named properties rather than positional arguments. Not directly passed into command execute
+        # but can be accessed in build context current_step
+        # not converted to BuildFileData, kept as simple dict
+        self.named: dict = {}
 
     def do_initialise(self, data: BuildFileData):
         setters = [
             PropertySetter('name', on_error=throw_property_error),
             PropertySetter('command', required=True, on_error=throw_property_error),
-            PropertySetter('arguments', on_error=throw_property_error)
+            PropertySetter('arguments', on_error=throw_property_error),
+            PropertySetter('named', on_error=throw_property_error)
         ]
 
         data.set_properties(setters, self)
+
+        self.named = self.named.data if isinstance(self.named, BuildFileData) else self.named
 
 
 class BuildSteps(BaseFileObject):

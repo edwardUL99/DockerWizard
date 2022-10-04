@@ -1,0 +1,4 @@
+# this file is in the project working directory so it'll be picked up automatically without the need of any arguments
+commands:
+  - file: 'testcustom.py'
+    class: 'TestCustomCommand'

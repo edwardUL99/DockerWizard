@@ -13,6 +13,7 @@ from .buildparser import get_build_parser
 from .customcommands import load_custom, custom_command_path_validator
 from .system import initialise_system, docker_wizard_home
 from .errors import BuildConfigurationError
+from . import timing
 
 
 def _validate_file(file):
@@ -79,6 +80,7 @@ def _find_custom_command_path(args_path: str, workdir: str, home_path: str):
         if path and os.path.isfile(path):
             return path
         elif i == 0 and args_path is not None:
+            # index 0 is the file provided by -c and if it is not found, throw an error
             raise BuildConfigurationError(f'Custom commands file {args_path} not found')
 
     return None
@@ -94,7 +96,8 @@ def _load_custom_commands(custom_command_path: str):
         custom_command_path = os.path.join(get_working_directory(), custom_command_path)
 
     try:
-        custom_command_path = _find_custom_command_path(custom_command_path, get_working_directory(), _docker_wizard_home())
+        custom_command_path = _find_custom_command_path(custom_command_path, get_working_directory(),
+                                                        _docker_wizard_home())
     except BuildConfigurationError as e:
         cli.error(e.message)
         sys.exit(1)
@@ -116,13 +119,12 @@ def main():
     The main entrypoint
     :return: None
     """
+    timing.start()
     initialise_system()
 
     args = parse()
 
     custom_command_path = args.custom
-    if custom_command_path and not os.path.isabs(custom_command_path):
-        custom_command_path = os.path.join(get_working_directory(), custom_command_path)
 
     _change_working_dir(args.workdir)
     _load_custom_commands(custom_command_path)
@@ -132,7 +134,15 @@ def main():
     parsed = parser.parse(file)
     builder_obj = Builder(parsed)
 
-    if not builder_obj.build():
+    built = builder_obj.build()
+    timing.end()
+    duration = timing.get_duration()
+
+    cli.info(f'Duration: {duration}')
+
+    if not built:
+        cli.error('BUILD FAILED')
         sys.exit(1)
     else:
+        cli.info('BUILD SUCCEEDED')
         change_back()

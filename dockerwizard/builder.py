@@ -11,6 +11,7 @@ from .cli import info, error
 from .commands import registry
 from .customcommands import change_and_load_custom
 from .errors import CommandError, BuildFailedError, BuildConfigurationError
+from .context import initialise, teardown
 
 
 class Builder:
@@ -24,6 +25,8 @@ class Builder:
         """
         self.config = config
         self._working_directory = create_temp_directory()
+        self._context = initialise()
+        self._context.config = config
 
     def _copy_file(self, file: File, dockerfile: bool = False):
         """
@@ -58,8 +61,7 @@ class Builder:
 
         info('Dockerfile and required files successfully copied to build directory')
 
-    @staticmethod
-    def _execute_step(index: int, step: BuildStep, post_step: bool = False):
+    def _execute_step(self, index: int, step: BuildStep, post_step: bool = False):
         """
         Execute the build step
         :param index: the index of this step
@@ -67,6 +69,7 @@ class Builder:
         :return: None
         """
         try:
+            self._context.current_step = step
             name = step.name
             command = step.command
             args = step.arguments
@@ -84,6 +87,8 @@ class Builder:
         except CommandError as e:
             error(f'Failed to execute build step {index} - {step.name} with error: {e.message}')
             raise BuildFailedError()
+        finally:
+            self._context.current_step = None
 
     def _execute_steps(self, post_steps: bool = False):
         """
@@ -154,11 +159,12 @@ class Builder:
             self._execute_steps(post_steps=True)
 
             info('Build finished, changing back to working directory')
-            info('BUILD SUCCEEDED')
         except BuildFailedError:
             error('See logs to see why the build failed')
-            error('BUILD FAILED')
             failed = True
+        finally:
+            teardown()
+            self._context = None
 
         change_back()
         self._clean_build_directory()

@@ -142,11 +142,20 @@ build:
         - '"Value of key2 is: $key2"'
     - name: 'Generate message.txt using set-message.sh'
       command: 'execute-shell'
+      named:
+        key: 'value'
       arguments:
         - 'bash' # if Windows, the framework will try to resolve bash to a bash emulator either through WSL or set with DOCKER_WIZARD_BASH_PATH env variable
         - 'set-message.sh'
     - name: 'View contents of build directory after build'
       command: 'execute-shell'
+      # execute-shell does not use named arguments but is a demonstration of how to use them. Any validation is to be
+      # done by the implementing command as only positional arguments can be validated for number of arguments required
+      # etc. Currently implemented should a custom command needs the concept of key-value arguments. The step object
+      # can be accessed through self.build_context.current_step in the command execute method
+      named:
+        key: 'value'
+        purpose: 'Allows named arguments'
       arguments:
         - 'ls'
         - '-al'
@@ -241,6 +250,7 @@ commands:
 ```
 
 [custom.py](example/custom.py)
+
 ```python
 from sys import path
 from os import environ
@@ -249,7 +259,7 @@ from os import environ
 project_home = environ.get('DOCKER_WIZARD_HOME')
 
 if project_home not in path:
-    path.append(project_home)
+  path.append(project_home)
 
 # custom commands should extend this abstract command
 from dockerwizard import AbstractCommand
@@ -259,32 +269,41 @@ from dockerwizard import cli
 
 
 class SampleCustomCommand(AbstractCommand):
-    """
-    This sample custom command simply just prints the arguments provided to it
-    """
-    def __init__(self):
-        # init the command with sample-custom-command which can be referenced from build files
-        # The command requires at least (at_least=True) 1 (num_args_required) arguments
-        super().__init__(name='sample-custom-command', num_args_required=1, at_least=True)
+  """
+  This sample custom command simply just prints the arguments provided to it
+  """
 
-    def _execute(self, args: list):
-        # this is the 'hook' that you extend for the command. AbstractCommand.execute validates the number of args and
-        # on successful validation, calls this
-        cli.info(f'The arguments passed to {self.default_name()} are:')
+  def __init__(self):
+    # init the command with sample-custom-command which can be referenced from build files
+    # The command requires at least (at_least=True) 1 (num_args_required) arguments
+    super().__init__(name='sample-custom-command', num_args_required=1, at_least=True)
 
-        for arg in args:
-            cli.info(f'\t{arg}')
+  def _execute(self, args: list):
+    # this is the 'hook' that you extend for the command. AbstractCommand.execute validates the number of args and
+    # on successful validation, calls this
+    cli.info(f'The arguments passed to {self.default_name()} are:')
 
-        try:
-            if args.index("throw-error"):
-                # demo purposes if args contain throw-error, raise a CommandError
-                raise CommandError('This is how you raise an error condition from the command')
-        except ValueError:
-            pass  # not in the list so ignore
+    for arg in args:
+      cli.info(f'\t{arg}')
 
-    def default_name(self):
-        # allows a default name to be assigned when the name tag is not provided in the build step
-        return 'Sample Custom Command'
+    try:
+      if args.index("throw-error"):
+        # demo purposes if args contain throw-error, raise a CommandError
+        raise CommandError('This is how you raise an error condition from the command')
+    except ValueError:
+      pass  # not in the list so ignore
+
+    cli.info('Named arguments in the context\'s current build step are '
+             f'{self.build_context.current_step.named})')
+
+  def default_name(self):
+    # allows a default name to be assigned when the name tag is not provided in the build step
+    return 'Sample Custom Command'
 ```
 This command simply prints out the arguments passed in and for demonstration purposes if the argument contains
-'throw-error' and error will be thrown
+'throw-error' and error will be thrown.
+
+#### Build Context
+In the custom command implementing AbstractCommand, you can access the build context using `self.build_context()`. 
+The context instance holds properties like the current build step
+and the build config. The framework initialises the context object before the build starts

@@ -39,11 +39,20 @@ build:
         - '"Value of key2 is: $key2"'
     - name: 'Generate message.txt using set-message.sh'
       command: 'execute-shell'
+      named:
+        key: 'value'
       arguments:
         - 'bash' # if Windows, the framework will try to resolve bash to a bash emulator either through WSL or set with DOCKER_WIZARD_BASH_PATH env variable
         - 'set-message.sh'
     - name: 'View contents of build directory after build'
       command: 'execute-shell'
+      # execute-shell does not use named arguments but is a demonstration of how to use them. Any validation is to be
+      # done by the implementing command as only positional arguments can be validated for number of arguments required
+      # etc. Currently implemented should a custom command needs the concept of key-value arguments. The step object
+      # can be accessed through self.build_context.current_step in the command execute method
+      named:
+        key: 'value'
+        purpose: 'Allows named arguments'
       arguments:
         - 'ls'
         - '-al'

@@ -10,10 +10,19 @@ class PostVerifyScript(it.PostVerificationTestCase):
 
     def test_exists(self):
         self.assertIsNotNone(self.stdout)
-        self.assertTrue('sample output' in self.stdout)
+
+        expected_outputs = [
+            'Current Step name is Execute test command with named arguments',
+            'Current Step named arguments are {\'key\': \'value\', \'key1\': \'value2\'}',
+            'image built'
+        ]
+
+        for out in expected_outputs:
+           self.assertTrue(out in self.stdout)
+
         self.assertTrue(self.stderr == '')
         self.assertEqual(0, self.exit_code)
 
 
 if __name__ == '__main__':
-    it.main()
+   it.main()

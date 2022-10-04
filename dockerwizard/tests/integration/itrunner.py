@@ -5,7 +5,7 @@ import argparse
 import platform
 import subprocess
 import sys
-from typing import List
+from typing import List, Set
 import glob
 import yaml
 import os
@@ -22,6 +22,20 @@ TEST_BUILD_FILE = 'build_test.yaml'
 DOCKER_WIZARD_HOME = os.path.abspath(os.path.join(os.path.dirname(__file__), os.path.pardir, os.path.pardir,
                                                   os.path.pardir))
 os.environ['DOCKER_WIZARD_HOME'] = DOCKER_WIZARD_HOME
+
+
+class EnvironmentVariableTracker:
+    def __init__(self):
+        self.environ = os.environ
+        self.set_envs = set()
+
+    def set(self, key: str, value: str):
+        self.environ[key] = value
+        self.set_envs.add(key)
+
+    def clear(self):
+        for key in self.set_envs:
+            self.environ.pop(key)
 
 
 class _SkipTest(RuntimeError):
@@ -89,9 +103,9 @@ class IntegrationRunnerProgram(IntegrationProgram):
             print(f'Args to pass to dockerwizard must be specified')
 
     @staticmethod
-    def _set_program_variables(base: str, variables: dict):
+    def _set_program_variables(base: str, variables: dict, envs: EnvironmentVariableTracker):
         for key, value in variables.items():
-            os.environ[f'{base}{key}'] = value
+            envs.set(f'{base}{key}', value)
 
     @staticmethod
     def _write(file: str, output: str):
@@ -104,7 +118,7 @@ class IntegrationRunnerProgram(IntegrationProgram):
             file = mock.get('file')
             file = file if os.path.isabs(file) else os.path.join(directory, file)
 
-            return {'path': file, 'relative_to_library': False}
+            return {'path': file, 'relative_to_library': False}, {'path': f'{file}.cmd', 'relative_to_library': False}
 
         build_file = os.path.join(directory, 'build.yaml')
 
@@ -114,7 +128,10 @@ class IntegrationRunnerProgram(IntegrationProgram):
         files = build.get('files', [])
 
         if mock_programs:
-            files.extend([_create_file(mock) for mock in mock_programs])
+            for m in mock_programs:
+                created = _create_file(m)
+                files.append(created[0])
+                files.append(created[1])
 
         build['files'] = files
         test_build = os.path.join(directory, TEST_BUILD_FILE)
@@ -152,8 +169,8 @@ class IntegrationRunnerProgram(IntegrationProgram):
             os.remove(file)
 
     @staticmethod
-    def _execute_post(process, post, directory, directory_name):
-        os.environ[TEST_RETURN_CODE] = f'{process.returncode}'
+    def _execute_post(process, post, directory, directory_name, envs: EnvironmentVariableTracker):
+        envs.set(TEST_RETURN_CODE, f'{process.returncode}')
         clean_files = process.returncode == 0
         process = subprocess.Popen(['python', post], stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         stdout, stderr = process.communicate()
@@ -180,7 +197,8 @@ class IntegrationRunnerProgram(IntegrationProgram):
             sys.exit(5)
 
     @staticmethod
-    def _execute_build_and_post(args: List[str], old_path: str, directory: str, build_file: str):
+    def _execute_build_and_post(args: List[str], old_path: str, directory: str, build_file: str,
+                                envs: EnvironmentVariableTracker):
         directory_name = os.path.basename(directory)
         print(f'Executing integration test {directory_name}')
         process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
@@ -195,12 +213,13 @@ class IntegrationRunnerProgram(IntegrationProgram):
         IntegrationRunnerProgram._check_build(process, stdout, stderr, directory_name)
 
         if os.path.isfile(post):
-            IntegrationRunnerProgram._execute_post(process, post, directory, directory_name)
+            IntegrationRunnerProgram._execute_post(process, post, directory, directory_name, envs)
 
             print_formatted_command_output(directory_name, 'Integration Test', True)
 
     @staticmethod
-    def _prepare_build(path: str, directory: str, mock_programs: list, spec_args: str):
+    def _prepare_build(path: str, directory: str, mock_programs: list, spec_args: str,
+                       envs: EnvironmentVariableTracker):
         program_args = {}
         program_output = {}
 
@@ -224,24 +243,27 @@ class IntegrationRunnerProgram(IntegrationProgram):
         args: List[str] = [os.path.join(DOCKER_WIZARD_HOME, 'bin', wizard_script)]
         args.extend([arg for arg in spec_args.split(' ')])
 
-        IntegrationRunnerProgram._set_program_variables(ARGUMENTS_BASE, program_args)
-        IntegrationRunnerProgram._set_program_variables(OUTPUT_BASE, program_output)
+        IntegrationRunnerProgram._set_program_variables(ARGUMENTS_BASE, program_args, envs)
+        IntegrationRunnerProgram._set_program_variables(OUTPUT_BASE, program_output, envs)
 
         build_file = IntegrationRunnerProgram._find_and_create_build_file(directory, args, mock_programs)
+
+        envs.set('DOCKER_WIZARD_DISABLE_COLOR', 'True')
 
         return args, build_file
 
     @staticmethod
-    def _execute_spec(spec):
+    def _execute_spec(spec, envs):
         directory = os.getcwd()
         old_path = os.environ['PATH']
         new_path = old_path
 
         mock_programs = spec.get('mock_programs')
 
-        args, build_file = IntegrationRunnerProgram._prepare_build(new_path, directory, mock_programs, spec.get('args'))
+        args, build_file = IntegrationRunnerProgram._prepare_build(new_path, directory, mock_programs,
+                                                                   spec.get('args'), envs)
 
-        IntegrationRunnerProgram._execute_build_and_post(args, old_path, directory, build_file)
+        IntegrationRunnerProgram._execute_build_and_post(args, old_path, directory, build_file, envs)
 
     @staticmethod
     def _parse_spec(spec_file: str):
@@ -249,7 +271,7 @@ class IntegrationRunnerProgram(IntegrationProgram):
             return yaml.safe_load(stream)
 
     @staticmethod
-    def _execute(directory: str, glob_part: bool):
+    def _execute(directory: str, glob_part: bool, envs: EnvironmentVariableTracker):
         if directory.endswith('/'):
             directory = directory[:-1]
 
@@ -258,7 +280,7 @@ class IntegrationRunnerProgram(IntegrationProgram):
         previous_dir = os.getcwd()
         os.chdir(directory)
         IntegrationRunnerProgram._validate_spec(spec, directory)
-        IntegrationRunnerProgram._execute_spec(spec)
+        IntegrationRunnerProgram._execute_spec(spec, envs)
         os.chdir(previous_dir)
 
     def run(self, args: argparse.Namespace):
@@ -270,7 +292,11 @@ class IntegrationRunnerProgram(IntegrationProgram):
             print('No tests found, exiting...')
         else:
             for test in tests:
+                envs = EnvironmentVariableTracker()
+
                 try:
-                    IntegrationRunnerProgram._execute(test, glob_part=do_glob)
+                    IntegrationRunnerProgram._execute(test, glob_part=do_glob, envs=envs)
                 except _SkipTest:
                     print(f'Warning: {test} does not contain a spec.yaml file, skipping...')
+                finally:
+                    envs.clear()

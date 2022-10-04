@@ -38,6 +38,9 @@ class SampleCustomCommand(AbstractCommand):
         except ValueError:
             pass  # not in the list so ignore
 
+        cli.info('Named arguments in the context\'s current build step are '
+                 f'{self.build_context.current_step.named})')
+
     def default_name(self):
         # allows a default name to be assigned when the name tag is not provided in the build step
         return 'Sample Custom Command'

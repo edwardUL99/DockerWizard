@@ -34,3 +34,11 @@ class BuildFailedError(BuildError):
     A marker error to signal that the build has failed
     """
     pass
+
+
+class BuildContextError(BuildError):
+    """
+    Error thrown by build context
+    """
+    def __init__(self):
+        super().__init__('Not in a build context')
