@@ -211,6 +211,12 @@ value is treated as a secret
     - 2: The tag/image of the container to run. Any command to execute in the created container can be passed into this
     string also, separated by spaces
     - *optional extra arguments like -p, --network etc. to pass to the docker run command*
+- **run-build-tool**: Allows the execution of a defined built tool (currently `maven` and `npm` are supported).
+  - *Arguments*: 1 positional argument specifying build tool (maven|npm)
+    - Named Arguments for each command:
+      - **maven**: `goals`: a required attribute storing a list of maven goals to execute. `arguments`: a list of
+additional arguments to pass to the maven command line
+      - **npm**: `arguments`: a required attribute storing a list of arguments to pass to the npm command line
 
 ### Custom Commands
 You can define your own custom commands to perform your use-case specific tasks. The general process for defining a

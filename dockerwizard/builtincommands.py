@@ -329,6 +329,78 @@ class CreateContainerCommand(AbstractCommand, BuiltinCommand):
         info('\t\tOptional extra arguments like -p, --network etc. to pass to the docker run command')
 
 
+class RunBuildCommand(AbstractCommand, BuiltinCommand):
+    """
+    A command that can run a build tool.
+    USes named args with only one positional argument identifying the build tool to use
+    """
+    def __init__(self):
+        super().__init__('run-build-tool', 1)
+        self._tool_args = {}  # a dictionary of tool to list of required name args
+        self._tool_args_getters = {}  # a dictionary to return args for the tool
+        self._register_tools()
+
+    def _register_tools(self):
+        self._tool_args['maven'] = [('goals', True), ('arguments', False)]
+        self._tool_args_getters['maven'] = RunBuildCommand._get_maven_args
+        self._tool_args['npm'] = [('arguments', True)]
+        self._tool_args_getters['npm'] = RunBuildCommand._get_npm_args
+
+    def _validate_named_args(self, tool_name: str, named: dict):
+        args_definition = self._tool_args[tool_name]
+
+        for definition in args_definition:
+            name = definition[0]
+            required = False if len(definition) < 2 else definition[1]
+            value = named.get(name)
+
+            if not value and required:
+                raise CommandError(f'Named argument {name} not provided')
+
+    @staticmethod
+    def _get_maven_args(named: dict) -> list:
+        args = ['mvn']
+        arguments = named.get('arguments')
+
+        if arguments:
+            args.extend(arguments)
+
+        args.extend(named['goals'])
+
+        return args
+
+    @staticmethod
+    def _get_npm_args(named: dict) -> list:
+        args = ['npm']
+        args.extend(named['arguments'])
+
+        return args
+
+    def _execute(self, args: list):
+        tool = args[0]
+
+        if tool not in self._tool_args and tool not in self._tool_args_getters:
+            raise CommandError(f'Build tool {tool} not currently supported by the {self.name} command')
+        else:
+            named = self.build_context.current_step.named
+            self._validate_named_args(tool, named)
+            command_args = self._tool_args_getters[tool](named)
+            execution = Execution(command_args).execute()
+            _GenericOutputHandler.handle_output(execution, command_args, f'Run {tool} build')
+
+    def default_name(self):
+        return 'Run Build Tool'
+
+    def print_help(self):
+        info(f'Command: {self.name}')
+        info('Run a supported build tool. Currently Maven (maven in args) and npm are supported')
+        info('\tArguments: 1 positional argument identifying the build tool (maven | npm)')
+        info('\tNamed Arguments:')
+        info('\t\tmaven: Maven supports goals named arguments identifying a list of Maven goals (required). '
+             'Also supports a list of arguments to pass to the maven command line')
+        info('\t\tnpm: supports a list of arguments to pass to the nom command line')
+
+
 def register_builtins():
     """
     Registers the builtin commands
@@ -340,7 +412,8 @@ def register_builtins():
     ScriptExecutorCommand('groovy')
     ScriptExecutorCommand('python')
 
-    for command in [CopyCommand, ExecuteSystemCommand, SetVariablesCommand, GitCloneCommand, CreateContainerCommand]:
+    for command in [CopyCommand, ExecuteSystemCommand, SetVariablesCommand, GitCloneCommand, CreateContainerCommand,
+                    RunBuildCommand]:
         command()
 
 

@@ -7,11 +7,15 @@ import os
 import unittest
 from unittest.mock import Mock
 
+from typing import Tuple
+
+from dockerwizard.context import BuildContext
+from dockerwizard.models import BuildStep
 from dockerwizard.process import ExecutionResult
 from .testing import main, PatchedDependencies
 from dockerwizard import builtincommands, commands
 from dockerwizard.builtincommands import CopyCommand, ExecuteSystemCommand, SetVariableCommand, \
-    SetVariablesCommand, GitCloneCommand, ScriptExecutorCommand, CreateContainerCommand
+    SetVariablesCommand, GitCloneCommand, ScriptExecutorCommand, CreateContainerCommand, RunBuildCommand
 from dockerwizard.errors import CommandError
 
 
@@ -445,6 +449,96 @@ class CreateContainerCommandTest(unittest.TestCase):
             self.command.execute(args)
 
         self.assertTrue('requires at least 2 arguments' in e.exception.message)
+
+
+class RunBuildCommandTest(unittest.TestCase):
+    def __init__(self, methodName):
+        super().__init__(methodName)
+        self.command = RunBuildCommand()
+
+    @contextlib.contextmanager
+    def _patch(self) -> Tuple[PatchedDependencies, Mock]:
+        with PatchedDependencies({
+            'execution': f'{base_package}.Execution',
+            'outputHandler': f'{base_package}._GenericOutputHandler'  # already tested previously so mock here
+        }) as patched, unittest.mock.patch(f'{base_package}.AbstractCommand.build_context',
+                                           new_callable=unittest.mock.PropertyMock) as property_mock:
+            execution_returned = Mock()
+            execution_returned.execute = Mock()
+            patched.get('execution').return_value = execution_returned
+
+            yield patched, property_mock
+
+    @staticmethod
+    def _create_build_step(named: dict):
+        step = BuildStep()
+        step.named = named
+
+        return step
+
+    @staticmethod
+    def _mock_build_context():
+        return BuildContext()
+
+    def test_initialisation(self):
+        self.assertEqual(self.command.name, 'run-build-tool')
+
+    def test_mvn_build(self):
+        named = {
+            'goals': ['clean', 'install']
+        }
+
+        with self._patch() as val:
+            patched = val[0]
+            property_mock = val[1]
+            context = RunBuildCommandTest._mock_build_context()
+            context.current_step = RunBuildCommandTest._create_build_step(named)
+            property_mock.return_value = context
+            test_execution = ExecutionResult(0, '', '')
+            patched.get('execution').return_value.execute.return_value = test_execution
+
+            self.command.execute(['maven'])
+            patched.get('execution').assert_any_call(['mvn', 'clean', 'install'])
+
+            named['arguments'] = ['-DskipTests']
+
+            self.command.execute(['maven'])
+            patched.get('execution').assert_any_call(['mvn', '-DskipTests', 'clean', 'install'])
+
+            named['goals'] = None
+            with self.assertRaises(CommandError) as e:
+                self.command.execute(['maven'])
+
+            self.assertTrue('Named argument goals not provided' in e.exception.message)
+
+    def test_npm_build(self):
+        named = {
+            'arguments': ['install']
+        }
+
+        with self._patch() as val:
+            patched = val[0]
+            property_mock = val[1]
+            context = RunBuildCommandTest._mock_build_context()
+            context.current_step = RunBuildCommandTest._create_build_step(named)
+            property_mock.return_value = context
+            test_execution = ExecutionResult(0, '', '')
+            patched.get('execution').return_value.execute.return_value = test_execution
+
+            self.command.execute(['npm'])
+            patched.get('execution').assert_any_call(['npm', 'install'])
+
+    def test_build_unknown_tool(self):
+        with self.assertRaises(CommandError) as e:
+            self.command.execute(['unknown'])
+
+        self.assertTrue('Build tool unknown not currently supported' in e.exception.message)
+
+    def test_invalid_arguments(self):
+        with self.assertRaises(CommandError) as e:
+            self.command.execute([])
+
+        self.assertTrue('requires 1 arguments' in e.exception.message)
 
 
 class RegisterBuiltinTest(unittest.TestCase):
