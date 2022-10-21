@@ -22,6 +22,7 @@ def _validate_file(file):
     :param file: the build file to validate
     :return: validated filepath
     """
+    file = file if file else 'build.yaml'
     path = os.path.join(get_working_directory(), file)
 
     if not os.path.isfile(path):

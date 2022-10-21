@@ -65,7 +65,7 @@ not installed)
 ## Run
 To run the tool, you have the following usage:
 
-`docker-wizard [-h] [-w  WORKDIR] [-c CUSTOM] [-v] [-b] file`
+`docker-wizard [-h] [-w  WORKDIR] [-c CUSTOM] [-v] [-b] [file]`
 
 The arguments are as follows:
 - **-h**: Prints usage help information
@@ -76,7 +76,9 @@ retrieved from project directory or `DOCKER_WIZARD_HOME`
 - **-b**: Print help information for all the builtin commands in the tool (similar to the builtin commands descriptions
 below) and immediately exit
 - **file**: The path relative to the working directory either from where the command is run or specified by `-w` to the
-build specification file
+build specification file. If not provided, a file called `build.yaml` will be used relative to the working directory.
+The build will fail if no build.yaml file is found. Any library path specified in the build.yaml file are relative to the working 
+directory and not the build file
 
 ## Tests
 The project has a set of automated unit tests which can be run using the following command (on Windows use the cmd file)
@@ -108,7 +110,7 @@ build:
   # file object representing dockerfile
   dockerfile:
     path: 'Dockerfile'
-  # specifies a path to where files should be retrieved from when relative to file library
+  # specifies a path to where files should be retrieved from when relative to file library. This path is relative to the working directory
   library: 'files'
   custom_commands: 'custom-commands.yaml'
   # list of file objects to copy to build directory

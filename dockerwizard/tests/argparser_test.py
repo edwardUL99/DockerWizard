@@ -81,13 +81,6 @@ class ArgparserTest(unittest.TestCase):
         self.assertIsNone(parsed.custom)
         self.assertEqual(file, parsed.file)
 
-    def test_missing_file_argument(self):
-        args = ['docker-wizard.py']
-        sys.argv = args
-
-        with patch('sys.stderr'), self.assertRaises(SystemExit):
-            argparser.parse()
-
     def test_version_argument(self):
         args = ['docker-wizard.py', '-v']
         sys.argv = args

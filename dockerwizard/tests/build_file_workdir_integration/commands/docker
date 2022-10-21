@@ -15,8 +15,8 @@ OUTPUT = f'MOCK_PROGRAM_OUTPUT_{BASENAME}'
 
 # these will get substituted by mockproggen.py if provided in arguments
 PARSED_ARGS = "build --tag image ."
-PARSED_OUTPUT = "docker built"
-TEST = "run_build_tool"
+PARSED_OUTPUT = "image built"
+TEST = "build_file_workdir_integration"
 
 
 def _normalize(split: List[str]):

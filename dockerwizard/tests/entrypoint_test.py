@@ -111,6 +111,26 @@ class EntrypointTest(unittest.TestCase):
             patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'file.yaml'))
             patched.get('builder').return_value.build.assert_called()
 
+    def test_entrypoint_build_file_in_work_dir(self):
+        args = argparse.Namespace()
+        args.custom = 'commands.yaml'
+        args.workdir = workdir
+        args.file = None
+
+        patched: PatchedDependencies
+        with self._patch() as patched:
+            EntrypointTest._default_patch_values(patched)
+
+            patched.get('argParse').return_value = args
+            patched.get('osPatched').path.isfile.return_value = True
+            patched.get('osPatched').path.isabs.return_value = False
+            patched.get('builder').return_value.build.return_value = True
+
+            entrypoint.main()
+
+            # test that it is called with implicit build.yaml
+            patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'build.yaml'))
+
     def test_entrypoint_custom_not_found(self):
         args = argparse.Namespace()
         args.custom = 'commands.yaml'

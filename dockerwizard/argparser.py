@@ -112,7 +112,9 @@ def _get_parser() -> argparse.ArgumentParser:
 
 
 ARGUMENTS: List[Argument] = [
-    PositionalArgument(name='file', description='The build file specifying the resulting Docker image'),
+    PositionalArgument(name='file', description='The build file specifying the resulting Docker image. If '
+                                                'not provided, a file called build.yaml will be looked '
+                                                'up in the working directory', nargs='?'),
     FlagArgument(name='-w', long_name='--workdir', description='The working directory to run the tool from '
                                                                '(different to the build directory). The '
                                                                'build file will be sourced relative to this if '

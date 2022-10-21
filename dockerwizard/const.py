@@ -4,7 +4,7 @@ Constants for the project
 import os
 
 # the version of the tool
-VERSION = '1.0.0a11 (alpha)'
+VERSION = '1.0.0a12 (alpha)'
 
 # name of environment variable for docker wizard home
 DOCKER_WIZARD_HOME_VAR = 'DOCKER_WIZARD_HOME'

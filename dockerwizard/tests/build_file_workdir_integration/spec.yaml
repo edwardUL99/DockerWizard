@@ -1,0 +1,8 @@
+# Write your integration test spec here. See the spec.yaml file in /home/eddy/Coding/Python/DockerWizard/dockerwizard/tests/integration/../example_integration for a sample
+mock_programs:
+  - file: 'commands/docker'
+    args: 'build --tag image .'
+    output: 'image built'
+args: ''
+# you need a build.yaml file defining the build. The itrunner will create a build_test.yaml file which has injected
+# variables which will be the actual build file used

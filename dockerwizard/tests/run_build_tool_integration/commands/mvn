@@ -16,7 +16,7 @@ OUTPUT = f'MOCK_PROGRAM_OUTPUT_{BASENAME}'
 # these will get substituted by mockproggen.py if provided in arguments
 PARSED_ARGS = "-DskipTests clean install"
 PARSED_OUTPUT = "maven built"
-TEST = "run_build_tool"
+TEST = "run_build_tool_integration"
 
 
 def _normalize(split: List[str]):

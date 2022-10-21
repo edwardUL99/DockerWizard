@@ -201,6 +201,7 @@ class IntegrationRunnerProgram(IntegrationProgram):
                                 envs: EnvironmentVariableTracker):
         directory_name = os.path.basename(directory)
         print(f'Executing integration test {directory_name}')
+        print(f'Starting docker-wizard with command-line {args}')
         process = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
         stdout, stderr = process.communicate()
         os.environ['PATH'] = old_path
