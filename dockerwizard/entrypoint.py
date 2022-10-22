@@ -115,28 +115,39 @@ def _load_custom_commands(custom_command_path: str):
             sys.exit(1)
 
 
-def main():
-    """
-    The main entrypoint
-    :return: None
-    """
-    timing.start()
-    initialise_system()
+def _handle_workdir(args):
+    file = 'build.yaml' if not args.file else args.file
+    workdir = os.path.dirname(file)
+    workdir = get_working_directory() if workdir == '' else workdir
+    _change_working_dir(workdir)
+    _load_custom_commands(args.custom)
+    file = _validate_file(os.path.basename(file))
 
-    args = parse()
+    return file
 
-    custom_command_path = args.custom
 
-    _change_working_dir(args.workdir)
-    _load_custom_commands(custom_command_path)
-    file = _validate_file(args.file)
+def _build(args):
+    file = _handle_workdir(args)
 
     parser = get_build_parser()
     parsed = parser.parse(file)
     builder_obj = Builder(parsed)
 
-    built = builder_obj.build()
+    return builder_obj.build()
+
+
+def main():
+    """
+    The main entrypoint
+    :return: None
+    """
+    initialise_system()
+    args = parse()
+
+    timing.start()
+    built = _build(args)
     timing.end()
+
     duration = timing.get_duration()
 
     cli.info(f'Duration: {duration}')

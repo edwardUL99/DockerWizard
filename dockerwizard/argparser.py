@@ -7,15 +7,7 @@ import argparse
 
 from .builtincommands import BuiltinsHelpAction
 from .const import DOCKER_WIZARD_CMD_NAME
-from .workdir import get_working_directory
 from .versioning import VersionAction
-
-
-def _get_work_dir():
-    """
-    Utility method to get current working directory, allows for easy testing
-    """
-    return get_working_directory()
 
 
 class Argument:
@@ -115,11 +107,6 @@ ARGUMENTS: List[Argument] = [
     PositionalArgument(name='file', description='The build file specifying the resulting Docker image. If '
                                                 'not provided, a file called build.yaml will be looked '
                                                 'up in the working directory', nargs='?'),
-    FlagArgument(name='-w', long_name='--workdir', description='The working directory to run the tool from '
-                                                               '(different to the build directory). The '
-                                                               'build file will be sourced relative to this if '
-                                                               'a relative path',
-                 default=_get_work_dir, required=False),
     FlagArgument(name='-c', long_name='--custom', description='A path to a custom commands YAML definition file. '
                                                               'Overrides default custom-commands.yaml file '
                                                               'found in the project root directory',

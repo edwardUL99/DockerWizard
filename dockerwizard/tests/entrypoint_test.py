@@ -61,7 +61,6 @@ class EntrypointTest(unittest.TestCase):
     def test_entrypoint_no_custom(self):
         args = argparse.Namespace()
         args.custom = None
-        args.workdir = workdir
         args.file = 'file.yaml'
 
         patched: PatchedDependencies
@@ -69,7 +68,6 @@ class EntrypointTest(unittest.TestCase):
             EntrypointTest._default_patch_values(patched)
 
             patched.get('osPatched').path.isfile.side_effect = EntrypointTest.is_file_side_effect({
-                f'{args.workdir}/{CUSTOM_COMMANDS}': False,
                 f'{wizard_home}/{CUSTOM_COMMANDS}': False,
                 f'{workdir}/{args.file}': True
             })
@@ -114,7 +112,6 @@ class EntrypointTest(unittest.TestCase):
     def test_entrypoint_build_file_in_work_dir(self):
         args = argparse.Namespace()
         args.custom = 'commands.yaml'
-        args.workdir = workdir
         args.file = None
 
         patched: PatchedDependencies
@@ -134,7 +131,6 @@ class EntrypointTest(unittest.TestCase):
     def test_entrypoint_custom_not_found(self):
         args = argparse.Namespace()
         args.custom = 'commands.yaml'
-        args.workdir = workdir
         args.file = 'file.yaml'
 
         patched: PatchedDependencies
@@ -157,7 +153,6 @@ class EntrypointTest(unittest.TestCase):
     def test_entrypoint_custom_validation_error(self):
         args = argparse.Namespace()
         args.custom = 'commands.yaml'
-        args.workdir = workdir
         args.file = 'file.yaml'
 
         patched: PatchedDependencies
@@ -181,19 +176,18 @@ class EntrypointTest(unittest.TestCase):
     def test_entrypoint_custom_in_workdir(self):
         args = argparse.Namespace()
         args.custom = None
-        args.workdir = f'{workdir}/test'
-        args.file = 'file.yaml'
+        args.file = f'{workdir}/test/file.yaml'
 
         patched: PatchedDependencies
         with self._patch() as patched:
             EntrypointTest._default_patch_values(patched)
 
-            patched.get('workingDirectory').return_value = args.workdir
+            patched.get('workingDirectory').return_value = f'{workdir}/test'
 
             patched.get('osPatched').path.isfile.side_effect = EntrypointTest.is_file_side_effect({
-                f'{args.workdir}/{CUSTOM_COMMANDS}': True,
+                f'{workdir}/test/{CUSTOM_COMMANDS}': True,
                 f'{workdir}/{CUSTOM_COMMANDS}': False,
-                f'{args.workdir}/{args.file}': True
+                f'{args.file}': True
             })
 
             patched.get('argParse').return_value = args
@@ -204,13 +198,12 @@ class EntrypointTest(unittest.TestCase):
 
             patched.get('initPatch').assert_called()
             patched.get('loadCustom').assert_called_with('custom-commands.yaml')
-            patched.get('buildParser').return_value.parse.assert_called_with(test_join(args.workdir, 'file.yaml'))
+            patched.get('buildParser').return_value.parse.assert_called_with(test_join(workdir, 'test', 'file.yaml'))
             patched.get('builder').return_value.build.assert_called()
 
     def test_entrypoint_build_file_not_found(self):
         args = argparse.Namespace()
         args.custom = None
-        args.workdir = workdir
         args.file = 'file.yaml'
 
         patched: PatchedDependencies
@@ -229,32 +222,9 @@ class EntrypointTest(unittest.TestCase):
             patched.get('buildParser').return_value.assert_not_called()
             patched.get('builder').return_value.assert_not_called()
 
-    def test_entrypoint_workdir_not_found(self):
-        args = argparse.Namespace()
-        args.custom = None
-        args.workdir = f'{workdir}/not-found'
-        args.file = 'file.yaml'
-
-        patched: PatchedDependencies
-        with self._patch() as patched:
-            EntrypointTest._default_patch_values(patched)
-
-            patched.get('argParse').return_value = args
-            patched.get('osPatched').path.isfile.return_value = True
-            patched.get('osPatched').path.isdir.return_value = False
-
-            with self.assertRaises(SystemExit):
-                entrypoint.main()
-
-            patched.get('initPatch').assert_called()
-            patched.get('buildParser').assert_not_called()
-            patched.get('buildParser').return_value.assert_not_called()
-            patched.get('builder').return_value.assert_not_called()
-
     def test_entrypoint_build_failed(self):
         args = argparse.Namespace()
         args.custom = None
-        args.workdir = workdir
         args.file = 'file.yaml'
 
         patched: PatchedDependencies

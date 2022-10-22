@@ -5,7 +5,7 @@ build:
   # file object representing dockerfile
   dockerfile:
     path: 'Dockerfile'
-  # specifies a path to where files should be retrieved from when relative to file library. This path is relative to the working directory
+  # specifies a path to where files should be retrieved from when relative to file library. This path is relative to the directory of the build file
   library: 'files'
   custom_commands: 'custom-commands.yaml'
   # list of file objects to copy to build directory

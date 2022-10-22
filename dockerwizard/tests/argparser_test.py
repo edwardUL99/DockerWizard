@@ -3,14 +3,12 @@ This tests the argparser module
 """
 import sys
 import unittest
-from unittest.mock import MagicMock, patch
+from unittest.mock import MagicMock
 
 from .testing import main
 from dockerwizard import argparser
 
 
-workdir = '/path/to/workdir'
-default_workdir = '/path/to/default/workdir'
 custom = 'custom-commands.yaml'
 file = 'file.yaml'
 
@@ -18,9 +16,6 @@ file = 'file.yaml'
 class ArgparserTest(unittest.TestCase):
     def __init__(self, methodName):
         super().__init__(methodName)
-        self.mocked_workdir = MagicMock()
-        argparser.get_working_directory = self.mocked_workdir
-        self.mocked_workdir.return_value = default_workdir
 
     def test_flag_argument(self):
         parser = MagicMock()
@@ -55,20 +50,18 @@ class ArgparserTest(unittest.TestCase):
                                                default=default, nargs=nargs)
 
     def test_all_args_provided(self):
-        args = ['docker-wizard.py', '-w', workdir, '-c', custom, file]
+        args = ['docker-wizard.py', '-c', custom, file]
         sys.argv = args
         parsed = argparser.parse()
 
-        self.assertEqual(workdir, parsed.workdir)
         self.assertEqual(custom, parsed.custom)
         self.assertEqual(file, parsed.file)
 
     def test_all_args_long_names(self):
-        args = ['docker-wizard.py', '--workdir', workdir, '--custom', custom, file]
+        args = ['docker-wizard.py', '--custom', custom, file]
         sys.argv = args
         parsed = argparser.parse()
 
-        self.assertEqual(workdir, parsed.workdir)
         self.assertEqual(custom, parsed.custom)
         self.assertEqual(file, parsed.file)
 
@@ -77,7 +70,6 @@ class ArgparserTest(unittest.TestCase):
         sys.argv = args
         parsed = argparser.parse()
 
-        self.assertEqual(default_workdir, parsed.workdir)
         self.assertIsNone(parsed.custom)
         self.assertEqual(file, parsed.file)
 

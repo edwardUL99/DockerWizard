@@ -65,20 +65,18 @@ not installed)
 ## Run
 To run the tool, you have the following usage:
 
-`docker-wizard [-h] [-w  WORKDIR] [-c CUSTOM] [-v] [-b] [file]`
+`docker-wizard [-h] [-c CUSTOM] [-v] [-b] [file]`
 
 The arguments are as follows:
 - **-h**: Prints usage help information
-- **-w**: Specify the working directory (not build directory) to retrieve `file` from
 - **-c**: Custom path to custom commands specification file, otherwise `custom-commands.yaml` is attempted to be
 retrieved from project directory or `DOCKER_WIZARD_HOME`
 - **-v**: Print the version and system information for the tool and immediately exit
 - **-b**: Print help information for all the builtin commands in the tool (similar to the builtin commands descriptions
 below) and immediately exit
-- **file**: The path relative to the working directory either from where the command is run or specified by `-w` to the
-build specification file. If not provided, a file called `build.yaml` will be used relative to the working directory.
-The build will fail if no build.yaml file is found. Any library path specified in the build.yaml file are relative to the working 
-directory and not the build file
+- **file**: The path relative to the working directory either from where the command is run. If not provided, a file called `build.yaml` will be used relative to the working directory.
+The build will fail if no build.yaml file is found. The tool will use the directory of the build file as the working directory,
+there, library paths in the build file is relative to the build file
 
 ## Tests
 The project has a set of automated unit tests which can be run using the following command (on Windows use the cmd file)
@@ -110,7 +108,7 @@ build:
   # file object representing dockerfile
   dockerfile:
     path: 'Dockerfile'
-  # specifies a path to where files should be retrieved from when relative to file library. This path is relative to the working directory
+  # specifies a path to where files should be retrieved from when relative to file library. This path is relative to directory of the build file
   library: 'files'
   custom_commands: 'custom-commands.yaml'
   # list of file objects to copy to build directory

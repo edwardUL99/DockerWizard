@@ -59,7 +59,7 @@ class IntegrationGenerationProgram(IntegrationProgram):
 
         print(f'An integration test directory has been generated in {directory}.\n'
               'Edit the build.yaml and spec.yaml files for this integration test\n'
-              'Use mockproggen.py to generate mock programs\n'
+              'Use itutils program to generate mock programs\n'
               'Edit the generated post.py file to write post build log verification tests')
 
         print_formatted_command_output(name, 'Integration Test Generation', True)

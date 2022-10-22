@@ -113,7 +113,9 @@ class IntegrationRunnerProgram(IntegrationProgram):
             f.write(output)
 
     @staticmethod
-    def _prepare_build_file(directory: str, mock_programs: List):
+    def _prepare_build_file(build_file: str, mock_programs: List):
+        directory = os.path.dirname(build_file)
+
         def _create_file(mock: dict):
             file = mock.get('file')
             file = file if os.path.isabs(file) else os.path.join(directory, file)
@@ -144,22 +146,12 @@ class IntegrationRunnerProgram(IntegrationProgram):
 
     @staticmethod
     def _find_and_create_build_file(directory: str, args: List[str], mock_programs: List):
-        workdir = directory
+        if len(args) > 0 and args[:-1] and args[:-1] != '':
+            build_file = os.path.join(directory, args[-1])
+        else:
+            build_file = os.path.join(directory, 'build.yaml')
 
-        for i, val in enumerate(args):
-            if val == '-w' or val == '--workdir':
-                if i + 1 < len(args):
-                    workdir = args[i + 1]
-                    break
-                else:
-                    raise ValueError('-w/--workdir in args specified incorrectly')
-            elif val == 'build.yaml':
-                args[i] = TEST_BUILD_FILE  # interpolate test build
-
-        if not os.path.abspath(workdir):
-            workdir = os.path.join(directory, workdir)
-
-        return IntegrationRunnerProgram._prepare_build_file(workdir, mock_programs)
+        return IntegrationRunnerProgram._prepare_build_file(build_file, mock_programs)
 
     @staticmethod
     def _clean_envs_files(directory: str):
